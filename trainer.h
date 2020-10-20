@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef struct Sample Sample;
+
 /**************************************************************************************************************/
 
 typedef struct Vector {
@@ -36,7 +38,7 @@ void add_matrix_vec_mul_vec(Matrix *mat, float *vec1, Vector *vec2);
 void set_vector_vec_mul_mat(float *output, float *vec, Matrix *mat);
 void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float));
 
-void affine_transform(Vector *vector, Matrix *matrix, Vector *output);
+void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *output);
 void affine_transform_bias(Vector *vector, Matrix *matrix, Vector *bias, Vector *output);
 
 /**************************************************************************************************************/
@@ -66,7 +68,7 @@ void activate_null(Vector *input, Vector *output);
 void activate_relu(Vector *input, Vector *output);
 void activate_sigmoid(Vector *input, Vector *output);
 
-void dense_evaluate_network(Network *nn, Evaluator *eval, Vector *input);
+void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample);
 
 /**************************************************************************************************************/
 
@@ -88,9 +90,9 @@ void delete_gradient(Gradient *grad);
 void print_gradient(Gradient *grad);
 void zero_gradient(Gradient *grad);
 
-void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float result);
-void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float *delta, int layer);
-void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float *delta);
+void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample);
+void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer);
+void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta);
 
 /**************************************************************************************************************/
 
@@ -105,7 +107,6 @@ typedef struct Sample {
 
 Sample *load_samples(char *fname, int length);
 void load_sample(FILE *fin, Sample *sample);
-void vectorify_sample(Vector *vec, Sample *sample);
 
 /**************************************************************************************************************/
 

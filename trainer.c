@@ -10,7 +10,6 @@
 int main() {
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
-    Vector *vec     = create_vector(768);
     Network *nn     = create_network(2, 768, 96, 1);
     Evaluator *eval = create_evaluator(nn);
     Gradient *grad  = create_gradient(nn);
@@ -23,9 +22,9 @@ int main() {
         float loss = 0.0;
 
         for (int i = 0; i < NSAMPLES; i++) {
-            vectorify_sample(vec, &samples[i]);
-            dense_evaluate_network(nn, eval, vec);
-            build_backprop_grad(nn, eval, grad, vec, samples[i].result);
+
+            sparse_evaluate_network(nn, eval, &samples[i]);
+            build_backprop_grad(nn, eval, grad, &samples[i]);
 
             loss += loss_function(eval->activations[nn->layers-1]->values[0], samples[i].result);
         }
@@ -35,23 +34,6 @@ int main() {
         printf("[Epoch %5d] Loss = %.9f\n", epoch, loss / NSAMPLES);
         fflush(stdout);
     }
-
-    // print_network(nn);
-    //
-    // Evaluator *eval = create_evaluator(nn);
-    // Gradient *grad = create_gradient(nn);
-    //
-    // Vector *sample = create_vector(8);
-    // set_vector(sample, 8, (float[]) { -1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0 });
-    // printf("Input Vector\n");
-    // print_vector(sample);
-    //
-    // dense_evaluate_network(nn, eval, sample);
-    // print_evaluator(eval);
-    //
-    // build_backprop_grad(nn, eval, grad, sample, 1.0);
-    //
-    // delete_network(nn);
 }
 
 /**************************************************************************************************************/
@@ -141,19 +123,20 @@ void set_matrix_col(Matrix *mat, int col, int rows, float *values) {
 }
 
 
-void affine_transform(Vector *vector, Matrix *matrix, Vector *output) {
+void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *output) {
 
+    assert(output->length == bias->length);
     assert(output->length == matrix->cols);
-    assert(vector->length == matrix->rows);
 
-    zero_vector(output);
+    for (int i = 0; i < output->length; i++)
+        output->values[i] = bias->values[i];
 
-    for (int i = 0; i < matrix->rows; i++)
+    for (int i = 0; i < sample->length; i++)
         for (int j = 0; j < matrix->cols; j++)
-            output->values[j] += vector->values[i] * matrix->values[i * matrix->cols + j];
+            output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
 }
 
-void affine_transform_bias(Vector *vector, Matrix *matrix, Vector *bias, Vector *output) {
+void affine_transform(Vector *vector, Matrix *matrix, Vector *bias, Vector *output) {
 
     assert(output->length == bias->length);
     assert(output->length == matrix->cols);
@@ -334,7 +317,7 @@ void activate_sigmoid(Vector *input, Vector *output) {
 }
 
 
-void dense_evaluate_network(Network *nn, Evaluator *eval, Vector *input) {
+void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
 
     assert(nn->layers == eval->layers);
 
@@ -343,7 +326,7 @@ void dense_evaluate_network(Network *nn, Evaluator *eval, Vector *input) {
     // Input Layer
 
     {
-        affine_transform_bias(input, nn->weights[0], nn->biases[0], eval->neurons[0]);
+        input_transform(sample, nn->weights[0], nn->biases[0], eval->neurons[0]);
         activate_relu(eval->neurons[0], eval->activations[0]);
         layer++;
     }
@@ -352,7 +335,7 @@ void dense_evaluate_network(Network *nn, Evaluator *eval, Vector *input) {
 
     while (layer < nn->layers - 1) {
 
-        affine_transform_bias(
+        affine_transform(
             eval->activations[layer-1], nn->weights[layer],
             nn->biases[layer], eval->neurons[layer]
         );
@@ -364,7 +347,7 @@ void dense_evaluate_network(Network *nn, Evaluator *eval, Vector *input) {
     // Output Layer
 
     {
-        affine_transform_bias(
+        affine_transform(
             eval->activations[layer-1], nn->weights[layer],
             nn->biases[layer], eval->neurons[layer]
         );
@@ -372,6 +355,7 @@ void dense_evaluate_network(Network *nn, Evaluator *eval, Vector *input) {
         activate_sigmoid(eval->neurons[layer], eval->activations[layer]);
     }
 }
+
 
 /**************************************************************************************************************/
 
@@ -439,20 +423,20 @@ void zero_gradient(Gradient *grad) {
 }
 
 
-void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float result) {
+void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample) {
 
     const int layers = nn->layers;
     const int final  = nn->layers - 1;
 
-    float loss = loss_function(eval->activations[final]->values[0], result);
-    float dloss_dout = loss_prime(eval->activations[final]->values[0], result);
+    float loss = loss_function(eval->activations[final]->values[0], sample->result);
+    float dloss_dout = loss_prime(eval->activations[final]->values[0], sample->result);
 
     float delta[] = { dloss_dout };
 
     apply_backprop(nn, eval, grad, sample, delta, final);
 }
 
-void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float *delta, int layer) {
+void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer) {
 
     const int layers = nn->layers;
     const int final  = nn->layers - 1;
@@ -469,11 +453,16 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample
     apply_backprop(nn, eval, grad, sample, delta_d1, layer-1);
 }
 
-void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float *delta) {
+void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta) {
 
     mul_vector_func_of_vec(delta, eval->neurons[0], &relu_prime);
     add_vector(grad->biases[0], delta);
-    add_matrix_vec_mul_vec(grad->weights[0], delta, sample);
+
+    for (int i = 0; i < sample->length; i++)
+        for (int j = 0; j < grad->weights[0]->cols; j++)
+            grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += delta[j];
+
+    // add_matrix_vec_mul_vec(grad->weights[0], delta, sample);
 }
 
 /**************************************************************************************************************/
