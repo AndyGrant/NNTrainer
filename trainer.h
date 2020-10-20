@@ -26,6 +26,8 @@ void set_matrix_col(Matrix *mat, int col, int rows, float *values);
 
 void add_vector(Vector *vec, float *addends);
 void add_matrix_vec_mul_vec(Matrix *mat, float *vec1, Vector *vec2);
+void set_vector_vec_mul_mat(float *output, float *vec, Matrix *mat);
+void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float));
 
 void affine_transform(Vector *vector, Matrix *matrix, Vector *output);
 void affine_transform_bias(Vector *vector, Matrix *matrix, Vector *bias, Vector *output);

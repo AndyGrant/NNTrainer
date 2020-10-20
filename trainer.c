@@ -9,7 +9,7 @@
 
 int main() {
 
-    Network *nn = create_network(2, 8, 2, 1);
+    Network *nn = create_network(3, 8, 4, 2, 1);
     print_network(nn);
 
     Evaluator *eval = create_evaluator(nn);
@@ -151,6 +151,21 @@ void add_matrix_vec_mul_vec(Matrix *mat, float *vec1, Vector *vec2) {
     for (int i = 0; i < mat->rows; i++)
         for (int j = 0; j < mat->cols; j++)
             mat->values[i * mat->cols + j] += vec1[j] * vec2->values[i];
+}
+
+void set_vector_vec_mul_mat(float *output, float *vec, Matrix *mat) {
+
+    for (int i = 0; i < mat->rows; i++) {
+        output[i] = 0.0;
+        for (int j = 0; j < mat->cols; j++)
+            output[i] += vec[j] * mat->values[i * mat->cols + j];
+    }
+}
+
+void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float)) {
+
+    for (int i = 0; i < vec->length; i++)
+        delta[i] *= func(vec->values[i]);
 }
 
 /**************************************************************************************************************/
@@ -415,42 +430,25 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample
 
     const int layers = nn->layers;
     const int final  = nn->layers - 1;
+    float delta_d1[grad->weights[layer]->rows];
 
     if (layer == 0)
         return apply_backprop_input(nn, eval, grad, sample, delta);
 
     float (*activation_prime)(float) = layer == final ? &sigmoid_prime : &relu_prime;
 
-    for (int i = 0; i < eval->neurons[layer]->length; i++)
-        delta[i] *= activation_prime(eval->neurons[layer]->values[i]);
-
+    mul_vector_func_of_vec(delta, eval->neurons[layer], activation_prime);
     add_vector(grad->biases[layer], delta);
     add_matrix_vec_mul_vec(grad->weights[layer], delta, eval->activations[layer-1]);
-
-    float delta_d1[grad->weights[layer]->rows];
-
-    for (int i = 0; i < grad->weights[layer]->rows; i++) {
-        delta_d1[i] = 0.0;
-        for (int j = 0; j < grad->weights[layer]->cols; j++)
-            delta_d1[i] += delta[j] * nn->weights[layer]->values[i * grad->weights[layer]->cols + j];
-    }
-
+    set_vector_vec_mul_mat(delta_d1, delta, nn->weights[layer]);
     apply_backprop(nn, eval, grad, sample, delta_d1, layer-1);
 }
 
 void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float *delta) {
 
-    const int layers = nn->layers;
-    const int final  = nn->layers - 1;
-    const int layer  = 0;
-
-    float (*activation_prime)(float) = layer == final ? &sigmoid_prime : &relu_prime;
-
-    for (int i = 0; i < eval->neurons[layer]->length; i++)
-        delta[i] *= activation_prime(eval->neurons[layer]->values[i]);
-
-    add_vector(grad->biases[layer], delta);
-    add_matrix_vec_mul_vec(grad->weights[layer], delta, sample);
+    mul_vector_func_of_vec(delta, eval->neurons[0], &relu_prime);
+    add_vector(grad->biases[0], delta);
+    add_matrix_vec_mul_vec(grad->weights[0], delta, sample);
 }
 
 /**************************************************************************************************************/
