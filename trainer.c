@@ -9,23 +9,49 @@
 
 int main() {
 
-    Network *nn = create_network(3, 8, 4, 2, 1);
-    print_network(nn);
-
+    Sample *samples = load_samples(DATAFILE, NSAMPLES);
+    Vector *vec     = create_vector(768);
+    Network *nn     = create_network(2, 768, 96, 1);
     Evaluator *eval = create_evaluator(nn);
-    Gradient *grad = create_gradient(nn);
+    Gradient *grad  = create_gradient(nn);
 
-    Vector *sample = create_vector(8);
-    set_vector(sample, 8, (float[]) { -1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0 });
-    printf("Input Vector\n");
-    print_vector(sample);
 
-    dense_evaluate_network(nn, eval, sample);
-    print_evaluator(eval);
+    for (int epoch = 0; epoch < 25; epoch++) {
 
-    build_backprop_grad(nn, eval, grad, sample, 1.0);
+        zero_gradient(grad);
 
-    delete_network(nn);
+        float loss = 0.0;
+
+        for (int i = 0; i < NSAMPLES; i++) {
+            vectorify_sample(vec, &samples[i]);
+            dense_evaluate_network(nn, eval, vec);
+            build_backprop_grad(nn, eval, grad, vec, samples[i].result);
+
+            loss += loss_function(eval->activations[nn->layers-1]->values[0], samples[i].result);
+        }
+
+        update_weights(nn, grad, 1.0, NSAMPLES);
+
+        printf("[Epoch %5d] Loss = %.9f\n", epoch, loss / NSAMPLES);
+        fflush(stdout);
+    }
+
+    // print_network(nn);
+    //
+    // Evaluator *eval = create_evaluator(nn);
+    // Gradient *grad = create_gradient(nn);
+    //
+    // Vector *sample = create_vector(8);
+    // set_vector(sample, 8, (float[]) { -1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0 });
+    // printf("Input Vector\n");
+    // print_vector(sample);
+    //
+    // dense_evaluate_network(nn, eval, sample);
+    // print_evaluator(eval);
+    //
+    // build_backprop_grad(nn, eval, grad, sample, 1.0);
+    //
+    // delete_network(nn);
 }
 
 /**************************************************************************************************************/
@@ -168,6 +194,8 @@ void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float)) {
         delta[i] *= func(vec->values[i]);
 }
 
+
+
 /**************************************************************************************************************/
 
 Network *create_network(int layers, ...) {
@@ -223,7 +251,7 @@ void print_network(Network *nn) {
 
 void randomize_network(Network *nn) {
 
-    #define random_weight() ((rand() % 4))
+    #define random_weight() (((rand() % 10000) - 5000) / 5000.0)
 
     for (int i = 0; i < nn->layers; i++) {
 
@@ -422,19 +450,16 @@ void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Vector *s
     float delta[] = { dloss_dout };
 
     apply_backprop(nn, eval, grad, sample, delta, final);
-
-    print_gradient(grad);
 }
 
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float *delta, int layer) {
 
     const int layers = nn->layers;
     const int final  = nn->layers - 1;
+
+    if (layer == 0) return apply_backprop_input(nn, eval, grad, sample, delta);
+
     float delta_d1[grad->weights[layer]->rows];
-
-    if (layer == 0)
-        return apply_backprop_input(nn, eval, grad, sample, delta);
-
     float (*activation_prime)(float) = layer == final ? &sigmoid_prime : &relu_prime;
 
     mul_vector_func_of_vec(delta, eval->neurons[layer], activation_prime);
@@ -452,3 +477,56 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Vector *
 }
 
 /**************************************************************************************************************/
+
+Sample *load_samples(char *fname, int length) {
+
+    Sample *samples = malloc(sizeof(Sample) * length);
+    printf("Allocated %.2fMB for Samples\n",
+        (float)(sizeof(Sample) * length) / (1024 * 1024));
+
+    FILE *fin = fopen(fname, "r");
+
+    for (int i = 0; i < length; i++)
+        load_sample(fin, &samples[i]);
+
+    fclose(fin);
+
+    return samples;
+}
+
+void load_sample(FILE *fin, Sample *sample) {
+
+    char *ptr, line[1024];
+    if (fgets(line, 1024, fin) == NULL)
+        exit(EXIT_FAILURE);
+
+    sample->length = 0;
+    sample->result = atof(strtok(line, " "));
+
+    while ((ptr = strtok(NULL, " ")) != NULL)
+        sample->indices[sample->length++] = atoi(ptr);
+}
+
+void vectorify_sample(Vector *vec, Sample *sample) {
+
+    zero_vector(vec);
+
+    for (int i = 0; i < sample->length; i++)
+        vec->values[sample->indices[i]] = 1.0;
+}
+
+/**************************************************************************************************************/
+
+void update_weights(Network *nn, Gradient *grad, float lrate, int batch_size) {
+
+    for (int layer = 0; layer < nn->layers; layer++) {
+
+        for (int i = 0; i < nn->weights[layer]->rows; i++)
+            for (int j = 0; j < nn->weights[layer]->cols; j++)
+                nn->weights[layer]->values[i * nn->weights[layer]->cols + j] -=
+                    grad->weights[layer]->values[i * nn->weights[layer]->cols + j] * (lrate / batch_size);
+
+        for (int i = 0; i < nn->biases[layer]->length; i++)
+            nn->biases[layer]->values[i] -=  grad->biases[layer]->values[i] * (lrate / batch_size);
+    }
+}

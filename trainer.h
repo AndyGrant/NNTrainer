@@ -1,5 +1,12 @@
 #pragma once
 
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+/**************************************************************************************************************/
+
 typedef struct Vector {
     int length;
     float *values;
@@ -84,5 +91,24 @@ void zero_gradient(Gradient *grad);
 void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float result);
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float *delta, int layer);
 void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Vector *sample, float *delta);
+
+/**************************************************************************************************************/
+
+#define MAX_INDICIES 32
+#define NSAMPLES 16384
+#define DATAFILE "halogen.data"
+
+typedef struct Sample {
+    float result;
+    int length, indices[MAX_INDICIES];
+} Sample;
+
+Sample *load_samples(char *fname, int length);
+void load_sample(FILE *fin, Sample *sample);
+void vectorify_sample(Vector *vec, Sample *sample);
+
+/**************************************************************************************************************/
+
+void update_weights(Network *nn, Gradient *grad, float lrate, int batch_size);
 
 /**************************************************************************************************************/
