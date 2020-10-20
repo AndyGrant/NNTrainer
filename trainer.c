@@ -11,13 +11,11 @@ int main() {
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
     Network *nn     = create_network(2, 768, 96, 1);
+    Optimizer *opt  = create_optimizer(nn);
     Evaluator *eval = create_evaluator(nn);
     Gradient *grad  = create_gradient(nn);
 
-
     for (int epoch = 0; epoch < 25; epoch++) {
-
-        zero_gradient(grad);
 
         float loss = 0.0;
 
@@ -27,9 +25,12 @@ int main() {
             build_backprop_grad(nn, eval, grad, &samples[i]);
 
             loss += loss_function(eval->activations[nn->layers-1]->values[0], samples[i].result);
+
+            if ((i && i % BATCHSIZE == 0))
+                update_network(opt, nn, grad, LEARNRATE, BATCHSIZE);
         }
 
-        update_weights(nn, grad, 1.0, NSAMPLES);
+        // update_network(opt, nn, grad, LEARNRATE, NSAMPLES);
 
         printf("[Epoch %5d] Loss = %.9f\n", epoch, loss / NSAMPLES);
         fflush(stdout);
@@ -176,8 +177,6 @@ void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float)) {
     for (int i = 0; i < vec->length; i++)
         delta[i] *= func(vec->values[i]);
 }
-
-
 
 /**************************************************************************************************************/
 
@@ -356,7 +355,6 @@ void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
     }
 }
 
-
 /**************************************************************************************************************/
 
 float sigmoid(float x) {
@@ -425,10 +423,8 @@ void zero_gradient(Gradient *grad) {
 
 void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample) {
 
-    const int layers = nn->layers;
     const int final  = nn->layers - 1;
 
-    float loss = loss_function(eval->activations[final]->values[0], sample->result);
     float dloss_dout = loss_prime(eval->activations[final]->values[0], sample->result);
 
     float delta[] = { dloss_dout };
@@ -438,7 +434,6 @@ void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *s
 
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer) {
 
-    const int layers = nn->layers;
     const int final  = nn->layers - 1;
 
     if (layer == 0) return apply_backprop_input(nn, eval, grad, sample, delta);
@@ -454,6 +449,8 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
 }
 
 void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta) {
+
+    (void) nn;
 
     mul_vector_func_of_vec(delta, eval->neurons[0], &relu_prime);
     add_vector(grad->biases[0], delta);
@@ -475,8 +472,17 @@ Sample *load_samples(char *fname, int length) {
 
     FILE *fin = fopen(fname, "r");
 
-    for (int i = 0; i < length; i++)
+    for (int i = 0; i < length; i++) {
+
         load_sample(fin, &samples[i]);
+
+        if (i == length - 1 || i % (1024*256) == 0) {
+            printf("\rLoaded %d of %d Samples", i+1, length);
+            fflush(stdout);
+        }
+    }
+
+    printf("\nFinished Reading %s\n\n", fname);
 
     fclose(fin);
 
@@ -496,26 +502,60 @@ void load_sample(FILE *fin, Sample *sample) {
         sample->indices[sample->length++] = atoi(ptr);
 }
 
-void vectorify_sample(Vector *vec, Sample *sample) {
-
-    zero_vector(vec);
-
-    for (int i = 0; i < sample->length; i++)
-        vec->values[sample->indices[i]] = 1.0;
-}
-
 /**************************************************************************************************************/
 
-void update_weights(Network *nn, Gradient *grad, float lrate, int batch_size) {
+Optimizer *create_optimizer(Network *nn) {
+    Optimizer *opt = malloc(sizeof(Optimizer));
+    opt->momentum = create_gradient(nn);
+    opt->velocity = create_gradient(nn);
+    return opt;
+}
+
+void delete_optimizer(Optimizer *opt) {
+    free(opt->momentum);
+    free(opt->velocity);
+    free(opt);
+}
+
+void update_network(Optimizer *opt, Network *nn, Gradient *grad, float lrate, int batch_size) {
 
     for (int layer = 0; layer < nn->layers; layer++) {
 
-        for (int i = 0; i < nn->weights[layer]->rows; i++)
-            for (int j = 0; j < nn->weights[layer]->cols; j++)
-                nn->weights[layer]->values[i * nn->weights[layer]->cols + j] -=
-                    grad->weights[layer]->values[i * nn->weights[layer]->cols + j] * (lrate / batch_size);
+        const int rows = nn->weights[layer]->rows;
+        const int cols = nn->weights[layer]->cols;
 
-        for (int i = 0; i < nn->biases[layer]->length; i++)
-            nn->biases[layer]->values[i] -=  grad->biases[layer]->values[i] * (lrate / batch_size);
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < rows * cols; i++) {
+
+            opt->momentum->weights[layer]->values[i]
+                = (BETA_1 * opt->momentum->weights[layer]->values[i])
+                + (1 - BETA_1) * (grad->weights[layer]->values[i] / batch_size);
+
+            opt->velocity->weights[layer]->values[i]
+                = (BETA_2 * opt->velocity->weights[layer]->values[i])
+                + (1 - BETA_2) * pow(grad->weights[layer]->values[i] / batch_size, 2.0);
+
+            nn->weights[layer]->values[i] -= lrate * opt->momentum->weights[layer]->values[i]
+                                           * (1.0 / (1e-8 + sqrt(opt->velocity->weights[layer]->values[i])));
+        }
+
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < nn->biases[layer]->length; i++) {
+
+            opt->momentum->biases[layer]->values[i]
+                = (BETA_1 * opt->momentum->biases[layer]->values[i])
+                + (1 - BETA_1) * (grad->biases[layer]->values[i] / batch_size);
+
+            opt->velocity->biases[layer]->values[i]
+                = (BETA_2 * opt->velocity->biases[layer]->values[i])
+                + (1 - BETA_2) * pow(grad->biases[layer]->values[i] / batch_size, 2.0);
+
+            nn->biases[layer]->values[i] -= lrate * opt->momentum->biases[layer]->values[i]
+                                          * (1.0 / (1e-8 + sqrt(opt->velocity->biases[layer]->values[i])));
+        }
     }
+
+    zero_gradient(grad);
 }
+
+/**************************************************************************************************************/

@@ -97,12 +97,13 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 /**************************************************************************************************************/
 
 #define MAX_INDICIES 32
-#define NSAMPLES 16384
+#define NSAMPLES (8192*64)
 #define DATAFILE "halogen.data"
 
 typedef struct Sample {
     float result;
-    int length, indices[MAX_INDICIES];
+    int length;
+    int16_t indices[MAX_INDICIES];
 } Sample;
 
 Sample *load_samples(char *fname, int length);
@@ -110,6 +111,20 @@ void load_sample(FILE *fin, Sample *sample);
 
 /**************************************************************************************************************/
 
-void update_weights(Network *nn, Gradient *grad, float lrate, int batch_size);
+#define BETA_1 0.9
+#define BETA_2 0.999
+
+#define LEARNRATE  0.01
+#define BATCHSIZE  8192
+
+typedef struct Optimizer {
+    Gradient *momentum;
+    Gradient *velocity;
+} Optimizer;
+
+Optimizer *create_optimizer(Network *nn);
+void delete_optimizer(Optimizer *opt);
+
+void update_network(Optimizer *opt, Network *nn, Gradient *grad, float lrate, int batch_size);
 
 /**************************************************************************************************************/
