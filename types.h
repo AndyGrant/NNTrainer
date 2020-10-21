@@ -18,13 +18,15 @@
 
 #pragma once
 
-#include "types.h"
+typedef struct Evaluator Evaluator;
+typedef struct Gradient  Gradient;
+typedef struct Layer     Layer;
+typedef struct Matrix    Matrix;
+typedef struct Network   Network;
+typedef struct Optimizer Optimizer;
+typedef struct Sample    Sample;
+typedef struct Vector    Vector;
 
-typedef struct Matrix {
-    int rows, cols;
-    float *values;
-} Matrix;
-
-Matrix *create_matrix(int rows, int cols);
-void delete_matrix(Matrix *matrix);
-void zero_matrix(Matrix *matrix);
+typedef float (*Activation) (float);
+typedef float (*Loss)       (const Sample*, const Vector *outputs);
+typedef void  (*BackProp)   (const Sample*, const Vector *outputs, float *dlossdz);

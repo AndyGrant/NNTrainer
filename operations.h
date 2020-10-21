@@ -18,10 +18,7 @@
 
 #pragma once
 
-#include "activate.h"
-#include "matrix.h"
-#include "vector.h"
-#include "trainer.h"
+#include "types.h"
 
 void add_array_to_vector(Vector *vector, float *addends);
 void add_array_mul_vector_to_matrix(Matrix *matrix, float *mulends, Vector *vector);

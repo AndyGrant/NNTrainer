@@ -18,18 +18,9 @@
 
 #pragma once
 
-#include <math.h>
-
-#include "vector.h"
-
-typedef struct Sample Sample; // DELETE ME
+#include "types.h"
 
 #define SIGM_COEFF (3.145 / 400.000)
-
-typedef float (*Activation) (float);
-typedef float (*Loss)       (const Sample*, const Vector *outputs);
-typedef void  (*BackProp)   (const Sample*, const Vector *outputs, float *dlossdz);
-
 
 /// Activation functions and deriviatives. These functions
 /// are all matching >> typedef float (*Activation) (float);
@@ -45,7 +36,6 @@ float null_activation_prime(float x);
 
 float loss_function(float x, float y);
 float loss_prime(float x, float y);
-
 
 /// Loss and BackProp functions. These functions are all matching
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);

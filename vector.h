@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "types.h"
+
 typedef struct Vector {
     int length;
     float *values;

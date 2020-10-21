@@ -22,11 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "vector.h"
-#include "matrix.h"
-#include "activate.h"
-
-typedef struct Sample Sample;
+#include "types.h"
 
 typedef struct Layer {
     int inputs, outputs;
