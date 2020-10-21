@@ -62,7 +62,7 @@ int main() {
 
         double elapsed = (get_time_point() - start) / 1000.0;
 
-        printf("[%4d] [%.3gs] Loss = %.9f\n", epoch, elapsed, loss / NSAMPLES);
+        printf("[%4d] [%0.3fs] Loss = %.9f\n", epoch, elapsed, loss / NSAMPLES);
         fflush(stdout);
 
         char fname[512];

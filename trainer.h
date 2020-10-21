@@ -31,17 +31,13 @@ typedef struct Layer {
 } Layer;
 
 typedef struct Network {
-
     int layers;
     Matrix **weights;
     Vector **biases;
-
     Activation *activations;
     BackProp *backprops;
-
     Loss loss;
     LossProp lossprop;
-
 } Network;
 
 Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop);
@@ -74,7 +70,7 @@ void zero_gradient(Gradient *grad);
 /**************************************************************************************************************/
 
 #define MAX_INDICIES 32
-#define NSAMPLES 16384
+#define NSAMPLES (1024*256)
 #define DATAFILE "halogen.data"
 
 typedef struct Sample {

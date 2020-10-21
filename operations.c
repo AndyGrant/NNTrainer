@@ -95,15 +95,18 @@ void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *s
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz, int layer) {
 
     if (layer == 0)
-        return apply_backprop_input(nn, eval, grad, sample, dlossdz);
+        apply_backprop_input(nn, eval, grad, sample, dlossdz);
 
-    nn->backprops[layer](dlossdz, eval->unactivated[layer]);
-    add_array_to_vector(grad->biases[layer], dlossdz);
-    add_array_mul_vector_to_matrix(grad->weights[layer], dlossdz, eval->activated[layer-1]);
+    else {
 
-    float dlossdz_d1[grad->weights[layer]->rows];
-    set_matrix_dot_array_to_array(dlossdz_d1, nn->weights[layer], dlossdz);
-    apply_backprop(nn, eval, grad, sample, dlossdz_d1, layer-1);
+        nn->backprops[layer](dlossdz, eval->unactivated[layer]);
+        add_array_to_vector(grad->biases[layer], dlossdz);
+        add_array_mul_vector_to_matrix(grad->weights[layer], dlossdz, eval->activated[layer-1]);
+
+        float dlossdz_d1[grad->weights[layer]->rows];
+        set_matrix_dot_array_to_array(dlossdz_d1, nn->weights[layer], dlossdz);
+        apply_backprop(nn, eval, grad, sample, dlossdz_d1, layer-1);
+    }
 }
 
 void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz) {
