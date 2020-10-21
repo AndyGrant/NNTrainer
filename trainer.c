@@ -18,7 +18,6 @@
 
 #include <assert.h>
 #include <math.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +31,12 @@
 int main() {
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
-    Network *nn     = create_network(2, 768, 96, 1);
+
+    Network *nn = create_network(2, (Layer[]) {
+        { 768, 96, &relu    , &relu_prime    },
+        {  96,  1, &sigmoid , &sigmoid_prime },
+    });
+
     Optimizer *opt  = create_optimizer(nn);
     Evaluator *eval = create_evaluator(nn);
     Gradient *grad  = create_gradient(nn);
@@ -86,26 +90,21 @@ void affine_transform(Vector *vector, Matrix *matrix, Vector *bias, Vector *outp
 
 /**************************************************************************************************************/
 
-Network *create_network(int layers, ...) {
+Network *create_network(int length, Layer *layers) {
 
     Network *nn = malloc(sizeof(Network));
 
-    nn->layers  = layers;
-    nn->weights = malloc(sizeof(Matrix*) * layers);
-    nn->biases  = malloc(sizeof(Vector*) * layers);
+    nn->layers      = length;
+    nn->weights     = malloc(sizeof(Matrix*) * length);
+    nn->biases      = malloc(sizeof(Vector*) * length);
+    nn->activations = malloc(sizeof(Activation) * length);
+    nn->derivatives = malloc(sizeof(Activation) * length);
 
-    va_list args;
-    va_start(args, layers);
-
-    int sizes[layers + 1];
-    for (int i = 0; i < layers + 1; i++)
-        sizes[i] = va_arg(args, int);
-
-    va_end(args);
-
-    for (int i = 0; i < layers; i++) {
-        nn->weights[i] = create_matrix(sizes[i], sizes[i+1]);
-        nn->biases[i]  = create_vector(sizes[i+1]);
+    for (int i = 0; i < length; i++) {
+        nn->weights[i]     = create_matrix(layers[i].inputs, layers[i].outputs);
+        nn->biases[i]      = create_vector(layers[i].outputs);
+        nn->activations[i] = layers[i].activation;
+        nn->derivatives[i] = layers[i].derivative;
     }
 
     randomize_network(nn);
@@ -234,7 +233,7 @@ void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
 
     {
         input_transform(sample, nn->weights[0], nn->biases[0], eval->neurons[0]);
-        activate_layer(eval->neurons[0], eval->activations[0], &relu);
+        activate_layer(eval->neurons[0], eval->activations[0], nn->activations[0]);
         layer++;
     }
 
@@ -247,7 +246,7 @@ void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
             nn->biases[layer], eval->neurons[layer]
         );
 
-        activate_layer(eval->neurons[layer], eval->activations[layer], &relu);
+        activate_layer(eval->neurons[layer], eval->activations[layer], nn->activations[layer]);
         layer++;
     }
 
@@ -259,7 +258,7 @@ void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
             nn->biases[layer], eval->neurons[layer]
         );
 
-        activate_layer(eval->neurons[layer], eval->activations[layer], sigmoid);
+        activate_layer(eval->neurons[layer], eval->activations[layer], nn->activations[layer]);
     }
 }
 

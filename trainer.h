@@ -25,6 +25,7 @@
 
 #include "vector.h"
 #include "matrix.h"
+#include "activate.h"
 
 typedef struct Sample Sample;
 
@@ -35,13 +36,20 @@ void affine_transform_bias(Vector *vector, Matrix *matrix, Vector *bias, Vector 
 
 /**************************************************************************************************************/
 
+typedef struct Layer {
+    int inputs, outputs;
+    Activation activation, derivative;
+} Layer;
+
 typedef struct Network {
     Matrix **weights;
     Vector **biases;
+    Activation *activations;
+    Activation *derivatives;
     int layers;
 } Network;
 
-Network *create_network(int layers, ...);
+Network *create_network(int length, Layer *layers);
 void delete_network(Network *nn);
 void print_network(Network *nn);
 void randomize_network(Network *nn);
