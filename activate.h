@@ -42,7 +42,7 @@ void activate_sigmoid(Vector *input, const Vector *output);
 void activate_null(Vector *input, const Vector *output);
 
 /// BackProp functions. These functions are all matching
-/// >>typedef void (*BackProp) (float *dlossdz, const Vector *vector);
+/// >> typedef void (*BackProp) (float *dlossdz, const Vector *vector);
 
 void backprop_relu(float *dlossdz, const Vector *vector);
 void backprop_sigmoid(float *dlossdz, const Vector *vector);
