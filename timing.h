@@ -18,16 +18,22 @@
 
 #pragma once
 
-typedef struct Evaluator Evaluator;
-typedef struct Gradient  Gradient;
-typedef struct Layer     Layer;
-typedef struct Matrix    Matrix;
-typedef struct Network   Network;
-typedef struct Optimizer Optimizer;
-typedef struct Sample    Sample;
-typedef struct Vector    Vector;
+#if defined(_WIN32) || defined(_WIN64)
+    #include <windows.h>
+    static inline double get_time_point() {
+        return (double)(GetTickCount());
+    }
+#else
+    #include <sys/time.h>
+    static inline double get_time_point() {
 
-typedef void  (*Activation) (Vector*, const Vector*);
-typedef void  (*BackProp)   (float *dlossdz, const Vector *vector);
-typedef float (*Loss)       (const Sample*, const Vector *outputs);
-typedef void  (*LossProp)   (const Sample*, const Vector *outputs, float *dlossdz);
+        struct timeval tv;
+        double secsInMilli, usecsInMilli;
+
+        gettimeofday(&tv, NULL);
+        secsInMilli = ((double)tv.tv_sec) * 1000;
+        usecsInMilli = tv.tv_usec / 1000;
+
+        return secsInMilli + usecsInMilli;
+    }
+#endif

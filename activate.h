@@ -22,9 +22,6 @@
 
 #define SIGM_COEFF (3.145 / 400.000)
 
-/// Activation functions and deriviatives. These functions
-/// are all matching >> typedef float (*Activation) (float);
-
 float relu(float x);
 float relu_prime(float x);
 
@@ -37,9 +34,23 @@ float null_activation_prime(float x);
 float loss_function(float x, float y);
 float loss_prime(float x, float y);
 
-/// Loss and BackProp functions. These functions are all matching
+/// Activation functions. These functions are all matching
+/// >> typedef void (*Activation) (Vector*, const Vector*);
+
+void activate_relu(Vector *input, const Vector *output);
+void activate_sigmoid(Vector *input, const Vector *output);
+void activate_null(Vector *input, const Vector *output);
+
+/// BackProp functions. These functions are all matching
+/// >> typedef void (*BackProp) (float *dlossdz, const Vector *vector);
+
+void backprop_relu(float *dlossdz, const Vector *vector);
+void backprop_sigmoid(float *dlossdz, const Vector *vector);
+void backprop_null(float *dlossdz, const Vector *vector);
+
+/// Loss and LossProp functions. These functions are all matching
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);
-/// >> typedef void  (*BackProp) (const Sample*, const Vector *outputs, float *dlossdz);
+/// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
 float l2_loss_one_neuron(const Sample *sample, const Vector *outputs);
-void l2_loss_one_neuron_backprop(const Sample *sample, const Vector *outputs, float *dlossdz);
+void l2_loss_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz);

@@ -18,6 +18,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,37 +28,56 @@
 #include "vector.h"
 #include "operations.h"
 #include "activate.h"
+#include "timing.h"
+
+int NTHREADS;
 
 int main() {
+
+    NTHREADS = omp_get_max_threads();
+
+    printf("Found %d Threads to Train on\n\n", NTHREADS);
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
 
     Network *nn = create_network(2, (Layer[]) {
-        { 768, 96, &relu    , &relu_prime    },
-        {  96,  1, &sigmoid , &sigmoid_prime },
-    }, l2_loss_one_neuron, l2_loss_one_neuron_backprop);
+        { 768, 96, &activate_relu    , &backprop_relu    },
+        {  96,  1, &activate_sigmoid , &backprop_sigmoid },
+    }, l2_loss_one_neuron, l2_loss_one_neuron_lossprop);
 
     Optimizer *opt  = create_optimizer(nn);
-    Evaluator *eval = create_evaluator(nn);
-    Gradient *grad  = create_gradient(nn);
+
+    Evaluator *evals[NTHREADS];
+    Gradient  *grads[NTHREADS];
+
+    for (int i = 0; i < NTHREADS; i++)
+        evals[i] = create_evaluator(nn);
+
+    for (int i = 0; i < NTHREADS; i++)
+        grads[i] = create_gradient(nn);
 
     for (int epoch = 0; epoch < 25000; epoch++) {
 
         float loss = 0.0;
 
-        for (int i = 0; i < NSAMPLES; i++) {
+        double start = get_time_point();
 
-            evaluate_network(nn, eval, &samples[i]);
-            build_backprop_grad(nn, eval, grad, &samples[i]);
-            loss += nn->loss(&samples[i], eval->activated[nn->layers-1]);
+        for (int batch = 0; batch < NSAMPLES / BATCHSIZE; batch++) {
 
-            if ((i && i % BATCHSIZE == 0))
-                update_network(opt, nn, grad, LEARNRATE, BATCHSIZE);
+            #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:loss)
+            for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
+                const int tidx = omp_get_thread_num();
+                evaluate_network(nn, evals[tidx], &samples[i]);
+                build_backprop_grad(nn, evals[tidx], grads[tidx], &samples[i]);
+                loss += nn->loss(&samples[i], evals[tidx]->activated[nn->layers-1]);
+            }
+
+            update_network(opt, nn, grads, LEARNRATE, BATCHSIZE);
         }
 
-        // update_network(opt, nn, grad, LEARNRATE, NSAMPLES);
+        double elapsed = (get_time_point() - start) / 1000.0;
 
-        printf("[Epoch %5d] Loss = %.9f\n", epoch, loss / NSAMPLES);
+        printf("[%4d] [%0.3fs] Loss = %.9f\n", epoch, elapsed, loss / NSAMPLES);
         fflush(stdout);
 
         char fname[512];
@@ -68,24 +88,24 @@ int main() {
 
 /**************************************************************************************************************/
 
-Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop) {
+Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop) {
 
     Network *nn = malloc(sizeof(Network));
 
     nn->layers   = length;
     nn->loss     = loss;
-    nn->backprop = backprop;
+    nn->lossprop = lossprop;
 
-    nn->weights     = malloc(sizeof(Matrix*) * length);
-    nn->biases      = malloc(sizeof(Vector*) * length);
+    nn->weights     = malloc(sizeof(Matrix*   ) * length);
+    nn->biases      = malloc(sizeof(Vector*   ) * length);
     nn->activations = malloc(sizeof(Activation) * length);
-    nn->derivatives = malloc(sizeof(Activation) * length);
+    nn->backprops   = malloc(sizeof(BackProp  ) * length);
 
     for (int i = 0; i < length; i++) {
         nn->weights[i]     = create_matrix(layers[i].inputs, layers[i].outputs);
         nn->biases[i]      = create_vector(layers[i].outputs);
         nn->activations[i] = layers[i].activation;
-        nn->derivatives[i] = layers[i].derivative;
+        nn->backprops[i]   = layers[i].backprop;
     }
 
     randomize_network(nn);
@@ -103,7 +123,7 @@ void delete_network(Network *nn) {
     free(nn->weights    );
     free(nn->biases     );
     free(nn->activations);
-    free(nn->derivatives);
+    free(nn->backprops  );
     free(nn);
 }
 
@@ -125,7 +145,7 @@ double random_normal(double mean, double sd)
 }
 
 void randomize_network(Network *nn) {
-
+  
     /*
     We initialize the weights to have a mean of zero and a standard deviation
     equal to sqrt(2*n) where n is the number of neurons in that layer. Note
@@ -137,13 +157,9 @@ void randomize_network(Network *nn) {
     We correct for the SIGM_COEFF in the final layer of weights
     */
 
-    for (int i = 0; i < nn->layers; i++) {
-
+    for (int i = 0; i < nn->layers; i++)
         for (int j = 0; j < nn->weights[i]->rows * nn->weights[i]->cols; j++)
             nn->weights[i]->values[j] = random_normal(0, sqrt(2.0 / (i < nn->layers - 1 ? nn->weights[i + 1]->rows : 1) / (i == nn->layers - 1 ? SIGM_COEFF : 1)));
-
-        for (int j = 0; j < nn->biases[i]->length; j++)
-            nn->biases[i]->values[j] = 0;
     }
 }
 
@@ -291,45 +307,71 @@ void delete_optimizer(Optimizer *opt) {
     free(opt);
 }
 
-void update_network(Optimizer *opt, Network *nn, Gradient *grad, float lrate, int batch_size) {
+float accumulate_grad_weight(Gradient **grads, int layer, int idx) {
+
+    float total = 0.0;
+
+    for (int i = 0; i < NTHREADS; i++)
+        total += grads[i]->weights[layer]->values[idx];
+
+    return total;
+}
+
+float accumulate_grad_bias(Gradient **grads, int layer, int idx) {
+
+    float total = 0.0;
+
+    for (int i = 0; i < NTHREADS; i++)
+        total += grads[i]->biases[layer]->values[idx];
+
+    return total;
+}
+
+void update_network(Optimizer *opt, Network *nn, Gradient **grads, float lrate, int batch_size) {
 
     for (int layer = 0; layer < nn->layers; layer++) {
 
         const int rows = nn->weights[layer]->rows;
         const int cols = nn->weights[layer]->cols;
 
-        #pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static) num_threads(NTHREADS)
         for (int i = 0; i < rows * cols; i++) {
+
+            const float true_grad = accumulate_grad_weight(grads, layer, i) / batch_size;
 
             opt->momentum->weights[layer]->values[i]
                 = (BETA_1 * opt->momentum->weights[layer]->values[i])
-                + (1 - BETA_1) * (grad->weights[layer]->values[i] / batch_size);
+                + (1 - BETA_1) * true_grad;
 
             opt->velocity->weights[layer]->values[i]
                 = (BETA_2 * opt->velocity->weights[layer]->values[i])
-                + (1 - BETA_2) * pow(grad->weights[layer]->values[i] / batch_size, 2.0);
+                + (1 - BETA_2) * pow(true_grad, 2.0);
 
             nn->weights[layer]->values[i] -= lrate * opt->momentum->weights[layer]->values[i]
                                            * (1.0 / (1e-8 + sqrt(opt->velocity->weights[layer]->values[i])));
         }
 
-        #pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static) num_threads(NTHREADS)
         for (int i = 0; i < nn->biases[layer]->length; i++) {
+
+            const float true_bias = accumulate_grad_bias(grads, layer, i) / batch_size;
 
             opt->momentum->biases[layer]->values[i]
                 = (BETA_1 * opt->momentum->biases[layer]->values[i])
-                + (1 - BETA_1) * (grad->biases[layer]->values[i] / batch_size);
+                + (1 - BETA_1) * true_bias;
 
             opt->velocity->biases[layer]->values[i]
                 = (BETA_2 * opt->velocity->biases[layer]->values[i])
-                + (1 - BETA_2) * pow(grad->biases[layer]->values[i] / batch_size, 2.0);
+                + (1 - BETA_2) * pow(true_bias, 2.0);
 
             nn->biases[layer]->values[i] -= lrate * opt->momentum->biases[layer]->values[i]
                                           * (1.0 / (1e-8 + sqrt(opt->velocity->biases[layer]->values[i])));
         }
     }
 
-    zero_gradient(grad);
+    #pragma omp parallel for schedule(static) num_threads(NTHREADS)
+    for (int i = 0; i < NTHREADS; i++)
+        zero_gradient(grads[i]);
 }
 
 /**************************************************************************************************************/

@@ -26,20 +26,21 @@
 
 typedef struct Layer {
     int inputs, outputs;
-    Activation activation, derivative;
+    Activation activation;
+    BackProp backprop;
 } Layer;
 
 typedef struct Network {
+    int layers;
     Matrix **weights;
     Vector **biases;
     Activation *activations;
-    Activation *derivatives;
+    BackProp *backprops;
     Loss loss;
-    BackProp backprop;
-    int layers;
+    LossProp lossprop;
 } Network;
 
-Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop);
+Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop);
 
 void delete_network(Network *nn);
 void randomize_network(Network *nn);
@@ -66,10 +67,13 @@ Gradient *create_gradient(Network *nn);
 void delete_gradient(Gradient *grad);
 void zero_gradient(Gradient *grad);
 
+float accumulate_grad_weight(Gradient **grads, int layer, int idx);
+float accumulate_grad_bias(Gradient **grads, int layer, int idx);
+
 /**************************************************************************************************************/
 
 #define MAX_INDICIES 32
-#define NSAMPLES 16384
+#define NSAMPLES (1024*256)
 #define DATAFILE "halogen.data"
 
 typedef struct Sample {
@@ -97,6 +101,6 @@ typedef struct Optimizer {
 Optimizer *create_optimizer(Network *nn);
 void delete_optimizer(Optimizer *opt);
 
-void update_network(Optimizer *opt, Network *nn, Gradient *grad, float lrate, int batch_size);
+void update_network(Optimizer *opt, Network *nn, Gradient **grads, float lrate, int batch_size);
 
 /**************************************************************************************************************/

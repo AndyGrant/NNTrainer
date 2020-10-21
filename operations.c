@@ -22,40 +22,28 @@
 
 #include "trainer.h"
 
-void add_array_to_vector(Vector *vector, float *addends) {
+void add_array_to_vector(Vector *vector, const float *addends) {
     for (int i = 0; i < vector->length; i++)
         vector->values[i] += addends[i];
 }
 
-void add_array_mul_vector_to_matrix(Matrix *matrix, float *mulends, Vector *vector) {
+void add_array_mul_vector_to_matrix(Matrix *matrix, const float *mulends, const Vector *vector) {
     for (int i = 0; i < matrix->rows; i++)
         for (int j = 0; j < matrix->cols; j++)
             matrix->values[i * matrix->cols + j] += mulends[j] * vector->values[i];
 }
 
-void activate_layer(Vector *input, Vector *output, Activation func) {
-    for (int i = 0; i < input->length; i++)
-        output->values[i] = func(input->values[i]);
-}
+void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const float *dotends) {
 
-
-void set_vector_vec_mul_mat(float *output, float *vec, Matrix *mat) {
-
-    for (int i = 0; i < mat->rows; i++) {
+    for (int i = 0; i < matrix->rows; i++) {
         output[i] = 0.0;
-        for (int j = 0; j < mat->cols; j++)
-            output[i] += vec[j] * mat->values[i * mat->cols + j];
+        for (int j = 0; j < matrix->cols; j++)
+            output[i] += dotends[j] * matrix->values[i * matrix->cols + j];
     }
 }
 
-void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float)) {
 
-    for (int i = 0; i < vec->length; i++)
-        delta[i] *= func(vec->values[i]);
-}
-
-
-void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *output) {
+void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output) {
 
     set_vector(output, bias->values);
 
@@ -64,7 +52,7 @@ void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *outpu
             output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
 }
 
-void affine_transform(Vector *vector, Matrix *matrix, Vector *bias, Vector *output) {
+void affine_transform(const Vector *vector, const Matrix *matrix, const Vector *bias, Vector *output) {
 
     set_vector(output, bias->values);
 
@@ -73,14 +61,14 @@ void affine_transform(Vector *vector, Matrix *matrix, Vector *bias, Vector *outp
             output->values[j] += vector->values[i] * matrix->values[i * matrix->cols + j];
 }
 
-void evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
+void evaluate_network(const Network *nn, Evaluator *eval, const Sample *sample) {
 
     {
         Vector *outputs   = eval->unactivated[0];
         Vector *activated = eval->activated[0];
 
         input_transform(sample, nn->weights[0], nn->biases[0], outputs);
-        activate_layer(outputs, activated, nn->activations[0]);
+        nn->activations[0](outputs, activated);
     }
 
     for (int layer = 1; layer < nn->layers; layer++) {
@@ -90,7 +78,7 @@ void evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
         Vector *activated = eval->activated[layer];
 
         affine_transform(inputs, nn->weights[layer], nn->biases[layer], outputs);
-        activate_layer(outputs, activated, nn->activations[layer]);
+        nn->activations[layer](outputs, activated);
     }
 }
 
@@ -100,29 +88,33 @@ void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *s
     const Vector *outputs = eval->activated[nn->layers-1];
     float dlossdz[outputs->length];
 
-    nn->backprop(sample, outputs, dlossdz);
+    nn->lossprop(sample, outputs, dlossdz);
     apply_backprop(nn, eval, grad, sample, dlossdz, nn->layers-1);
 }
 
-void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer) {
+void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz, int layer) {
 
     if (layer == 0)
-        return apply_backprop_input(nn, eval, grad, sample, delta);
+        apply_backprop_input(nn, eval, grad, sample, dlossdz);
 
-    float delta_d1[grad->weights[layer]->rows];
-    mul_vector_func_of_vec(delta, eval->unactivated[layer], nn->derivatives[layer]);
-    add_array_to_vector(grad->biases[layer], delta);
-    add_array_mul_vector_to_matrix(grad->weights[layer], delta, eval->activated[layer-1]);
-    set_vector_vec_mul_mat(delta_d1, delta, nn->weights[layer]);
-    apply_backprop(nn, eval, grad, sample, delta_d1, layer-1);
+    else {
+
+        nn->backprops[layer](dlossdz, eval->unactivated[layer]);
+        add_array_to_vector(grad->biases[layer], dlossdz);
+        add_array_mul_vector_to_matrix(grad->weights[layer], dlossdz, eval->activated[layer-1]);
+
+        float dlossdz_d1[grad->weights[layer]->rows];
+        set_matrix_dot_array_to_array(dlossdz_d1, nn->weights[layer], dlossdz);
+        apply_backprop(nn, eval, grad, sample, dlossdz_d1, layer-1);
+    }
 }
 
-void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta) {
+void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz) {
 
-    mul_vector_func_of_vec(delta, eval->unactivated[0], nn->derivatives[0]);
-    add_array_to_vector(grad->biases[0], delta);
+    nn->backprops[0](dlossdz, eval->unactivated[0]);
+    add_array_to_vector(grad->biases[0], dlossdz);
 
     for (int i = 0; i < sample->length; i++)
         for (int j = 0; j < grad->weights[0]->cols; j++)
-            grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += delta[j];
+            grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += dlossdz[j];
 }
