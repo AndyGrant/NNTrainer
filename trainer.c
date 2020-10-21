@@ -64,7 +64,7 @@ int main() {
 
         for (int batch = 0; batch < NSAMPLES / BATCHSIZE; batch++) {
 
-            #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:loss)
+            #pragma omp parallel for schedule(static, BATCHSIZE / NTHREADS) num_threads(NTHREADS) reduction(+:loss)
             for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
                 const int tidx = omp_get_thread_num();
                 evaluate_network(nn, evals[tidx], &samples[i]);
@@ -331,15 +331,15 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, float lrate, 
         #pragma omp parallel for schedule(static) num_threads(NTHREADS)
         for (int i = 0; i < nn->biases[layer]->length; i++) {
 
-            const float true_bias = accumulate_grad_bias(grads, layer, i) / batch_size;
+            const float true_grad = accumulate_grad_bias(grads, layer, i) / batch_size;
 
             opt->momentum->biases[layer]->values[i]
                 = (BETA_1 * opt->momentum->biases[layer]->values[i])
-                + (1 - BETA_1) * true_bias;
+                + (1 - BETA_1) * true_grad;
 
             opt->velocity->biases[layer]->values[i]
                 = (BETA_2 * opt->velocity->biases[layer]->values[i])
-                + (1 - BETA_2) * pow(true_bias, 2.0);
+                + (1 - BETA_2) * pow(true_grad, 2.0);
 
             nn->biases[layer]->values[i] -= lrate * opt->momentum->biases[layer]->values[i]
                                           * (1.0 / (1e-8 + sqrt(opt->velocity->biases[layer]->values[i])));
