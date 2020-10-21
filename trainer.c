@@ -107,20 +107,40 @@ void delete_network(Network *nn) {
     free(nn);
 }
 
+double random_uniform()
+{
+    //very important we return a number BETWEEN 0 and 1
+    return (double) (rand() + 1) / (RAND_MAX + 2);
+}
+
+double random_standard_normal()
+{
+    //Box-Muller transform
+    return sqrt(-2.0 * log(random_uniform())) * cos (2 * M_PI * random_uniform());
+}
+
+double random_normal(double mean, double sd)
+{
+    return (random_standard_normal() * sd) + mean;
+}
+
 void randomize_network(Network *nn) {
 
-    #define random_weight() (((rand() % 10000) - 5000) / 5000.0)
+    /*
+    We initialize the weights to have a mean of zero and a standard deviation
+    equal to sqrt(2*n) where n is the number of neurons in that layer.
+
+    Biases are initialized as zero.
+    */
 
     for (int i = 0; i < nn->layers; i++) {
 
         for (int j = 0; j < nn->weights[i]->rows * nn->weights[i]->cols; j++)
-            nn->weights[i]->values[j] = random_weight();
+            nn->weights[i]->values[j] = random_normal(0, sqrt(2 * nn->weights[i]->rows));
 
         for (int j = 0; j < nn->biases[i]->length; j++)
-            nn->biases[i]->values[j] = random_weight();
+            nn->biases[i]->values[j] = 0;
     }
-
-    #undef random_weight
 }
 
 void save_network(Network *nn, char *fname) {
