@@ -67,6 +67,9 @@ Gradient *create_gradient(Network *nn);
 void delete_gradient(Gradient *grad);
 void zero_gradient(Gradient *grad);
 
+float accumulate_grad_weight(Gradient **grads, int layer, int idx);
+float accumulate_grad_bias(Gradient **grads, int layer, int idx);
+
 /**************************************************************************************************************/
 
 #define MAX_INDICIES 32
@@ -98,6 +101,6 @@ typedef struct Optimizer {
 Optimizer *create_optimizer(Network *nn);
 void delete_optimizer(Optimizer *opt);
 
-void update_network(Optimizer *opt, Network *nn, Gradient *grad, float lrate, int batch_size);
+void update_network(Optimizer *opt, Network *nn, Gradient **grads, float lrate, int batch_size);
 
 /**************************************************************************************************************/
