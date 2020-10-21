@@ -66,6 +66,8 @@ int main() {
     }
 }
 
+/**************************************************************************************************************/
+
 Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop) {
 
     Network *nn = malloc(sizeof(Network));
@@ -121,7 +123,6 @@ void randomize_network(Network *nn) {
     #undef random_weight
 }
 
-
 void save_network(Network *nn, char *fname) {
 
     FILE *fout = fopen(fname, "w");
@@ -142,9 +143,7 @@ void save_network(Network *nn, char *fname) {
     fclose(fout);
 }
 
-void load_network(Network *nn, char *fname) {
-}
-
+/**************************************************************************************************************/
 
 Evaluator *create_evaluator(Network *nn) {
 
@@ -172,8 +171,6 @@ void delete_evaluator(Evaluator *eval) {
     free(eval->activated);
     free(eval);
 }
-
-/**************************************************************************************************************/
 
 
 /**************************************************************************************************************/

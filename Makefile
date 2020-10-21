@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 CC	 = gcc
-SRC	 = trainer.c vector.c matrix.c operations.c activate.c
+SRC	 = *.c
 LIBS = -fopenmp -lm
 
 WFLAGS = -Wall -Wextra -Wshadow

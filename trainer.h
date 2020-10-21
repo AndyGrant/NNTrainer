@@ -43,9 +43,7 @@ Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop)
 
 void delete_network(Network *nn);
 void randomize_network(Network *nn);
-
 void save_network(Network *nn, char *fname);
-void load_network(Network *nn, char *fname);
 
 typedef struct Evaluator {
     Vector **unactivated;
