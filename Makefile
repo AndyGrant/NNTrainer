@@ -20,7 +20,7 @@ LIBS = -fopenmp -lm
 
 WFLAGS = -Wall -Wextra -Wshadow -Wpedantic
 CFLAGS = -O3 -flto -march=native -DNDEBUG
-PFLAGS = -O0 -p -g3 -march=native -DNDEBUG
+PFLAGS = -O0 -p -pg -march=native -DNDEBUG
 
 NETDIR := $(shell mkdir -p Networks)
 
