@@ -109,18 +109,15 @@ void delete_network(Network *nn) {
 
 void randomize_network(Network *nn) {
 
-    #define random_weight() (((rand() % 10000) - 5000) / 5000.0)
+    #define uniform() ((float) (rand() + 1) / (RAND_MAX + 2))
+    #define random()  (sqrt(-2.0 * log(uniform())) * cos(2 * M_PI * uniform()))
 
-    for (int i = 0; i < nn->layers; i++) {
-
+    for (int i = 0; i < nn->layers; i++)
         for (int j = 0; j < nn->weights[i]->rows * nn->weights[i]->cols; j++)
-            nn->weights[i]->values[j] = random_weight();
+            nn->weights[i]->values[j] = random();
 
-        for (int j = 0; j < nn->biases[i]->length; j++)
-            nn->biases[i]->values[j] = random_weight();
-    }
-
-    #undef random_weight
+    #undef uniform
+    #undef random
 }
 
 void save_network(Network *nn, char *fname) {
