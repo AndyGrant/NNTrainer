@@ -39,13 +39,3 @@ void set_vector(Vector *vec, float *values) {
 void zero_vector(Vector *vec) {
     memset(vec->values, 0, sizeof(float) * vec->length);
 }
-
-void print_vector(const Vector *vec) {
-
-    printf("[ ");
-
-    for (int i = 0; i < vec->length; i++)
-        printf(PRINT_FORMAT " ", vec->values[i]);
-
-    printf("]\n\n");
-}

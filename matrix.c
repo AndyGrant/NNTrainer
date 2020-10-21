@@ -30,15 +30,3 @@ Matrix *create_matrix(int rows, int cols) {
 void delete_matrix(Matrix *mat) {
     free(mat->values); free(mat);
 }
-
-void print_matrix(const Matrix *mat) {
-
-    printf("[");
-
-    for (int i = 0; i < mat->rows; i++) {
-        printf(i == 0 ? "[ " : " [ ");
-        for (int j = 0; j < mat->cols; j++)
-            printf(PRINT_FORMAT " ", mat->values[i * mat->cols + j]);
-        printf(i == mat->rows - 1 ? "]]\n\n" : "]\n");
-    }
-}

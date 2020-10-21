@@ -27,4 +27,3 @@ typedef struct Matrix {
 
 Matrix *create_matrix(int rows, int cols);
 void delete_matrix(Matrix *mat);
-void print_matrix(const Matrix *mat);

@@ -27,8 +27,5 @@ typedef struct Vector {
 
 Vector *create_vector(int length);
 void delete_vector(Vector *vec);
-
 void set_vector(Vector *vec, float *values);
 void zero_vector(Vector *vec);
-
-void print_vector(const Vector *vec);

@@ -128,18 +128,6 @@ void delete_network(Network *nn) {
     free(nn);
 }
 
-void print_network(Network *nn) {
-
-    for (int i = 0; i < nn->layers; i++) {
-
-        printf("Layer %d Weights (%dx%d)\n", i + 1, nn->weights[i]->rows, nn->weights[i]->cols);
-        print_matrix(nn->weights[i]);
-
-        printf("Layer %d Biases (%dx1)\n", i + 1, nn->biases[i]->length);
-        print_vector(nn->biases[i]);
-    }
-}
-
 void randomize_network(Network *nn) {
 
     #define random_weight() (((rand() % 10000) - 5000) / 5000.0)
@@ -207,24 +195,6 @@ void delete_evaluator(Evaluator *eval) {
     free(eval->activations);
     free(eval);
 }
-
-void print_evaluator(Evaluator *eval) {
-
-    printf("==========================================\n");
-    printf("======== Cached Evalution Nuerons ========\n\n");
-
-    for (int i = 0; i < eval->layers; i++) {
-        printf("Layer %d Neurons:\n", i + 1);
-        print_vector(eval->neurons[i]);
-        printf("Layer %d Activations:\n", i + 1);
-        print_vector(eval->activations[i]);
-    }
-
-    printf("==========================================\n");
-}
-
-
-
 
 
 void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
@@ -325,12 +295,10 @@ void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *s
 
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer) {
 
-    const int final  = nn->layers - 1;
-
-    if (layer == 0) return apply_backprop_input(nn, eval, grad, sample, delta);
+    if (layer == 0)
+        return apply_backprop_input(eval, grad, sample, delta);
 
     float delta_d1[grad->weights[layer]->rows];
-
     mul_vector_func_of_vec(delta, eval->neurons[layer], nn->derivatives[layer]);
     add_array_to_vector(grad->biases[layer], delta);
     add_array_mul_vector_to_matrix(grad->weights[layer], delta, eval->activations[layer-1]);
@@ -338,9 +306,7 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
     apply_backprop(nn, eval, grad, sample, delta_d1, layer-1);
 }
 
-void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta) {
-
-    (void) nn;
+void apply_backprop_input(Evaluator *eval, Gradient *grad, Sample *sample, float *delta) {
 
     mul_vector_func_of_vec(delta, eval->neurons[0], &relu_prime);
     add_array_to_vector(grad->biases[0], delta);

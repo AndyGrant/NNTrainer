@@ -90,7 +90,7 @@ void zero_gradient(Gradient *grad);
 
 void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample);
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer);
-void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta);
+void apply_backprop_input(Evaluator *eval, Gradient *grad, Sample *sample, float *delta);
 
 /**************************************************************************************************************/
 
