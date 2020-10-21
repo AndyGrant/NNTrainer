@@ -27,6 +27,7 @@
 #include "matrix.h"
 #include "vector.h"
 #include "operations.h"
+#include "activate.h"
 
 int main() {
 
@@ -220,29 +221,7 @@ void print_evaluator(Evaluator *eval) {
 }
 
 
-void activate_null(Vector *input, Vector *output) {
 
-    assert(input->length == output->length);
-
-    for (int i = 0; i < input->length; i++)
-        output->values[i] = input->values[i];
-}
-
-void activate_relu(Vector *input, Vector *output) {
-
-    assert(input->length == output->length);
-
-    for (int i = 0; i < input->length; i++)
-        output->values[i] = relu(input->values[i]);
-}
-
-void activate_sigmoid(Vector *input, Vector *output) {
-
-    assert(input->length == output->length);
-
-    for (int i = 0; i < input->length; i++)
-        output->values[i] = sigmoid(input->values[i]);
-}
 
 
 void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
@@ -255,7 +234,7 @@ void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
 
     {
         input_transform(sample, nn->weights[0], nn->biases[0], eval->neurons[0]);
-        activate_relu(eval->neurons[0], eval->activations[0]);
+        activate_layer(eval->neurons[0], eval->activations[0], &relu);
         layer++;
     }
 
@@ -268,7 +247,7 @@ void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
             nn->biases[layer], eval->neurons[layer]
         );
 
-        activate_relu(eval->neurons[layer], eval->activations[layer]);
+        activate_layer(eval->neurons[layer], eval->activations[layer], &relu);
         layer++;
     }
 
@@ -280,36 +259,12 @@ void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
             nn->biases[layer], eval->neurons[layer]
         );
 
-        activate_sigmoid(eval->neurons[layer], eval->activations[layer]);
+        activate_layer(eval->neurons[layer], eval->activations[layer], sigmoid);
     }
 }
 
 /**************************************************************************************************************/
 
-float sigmoid(float x) {
-    return 1.0 / (1.0 + exp(-SIGM_COEFF * x));
-}
-
-float sigmoid_prime(float x) {
-    float sigm = sigmoid(x);
-    return SIGM_COEFF * sigm * (1.0 - sigm);
-}
-
-float loss_function(float x, float y) {
-    return pow(y - x, 2.0);
-}
-
-float loss_prime(float x, float y) {
-    return -2.0 * (y - x);
-}
-
-float relu(float x) {
-    return fmaxf(0.0, x);
-}
-
-float relu_prime(float x) {
-    return x > 0.0 ? 1.0 : 0.0;
-}
 
 /**************************************************************************************************************/
 

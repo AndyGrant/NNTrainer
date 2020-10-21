@@ -67,17 +67,6 @@ void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample);
 
 /**************************************************************************************************************/
 
-#define SIGM_COEFF (3.145 / 400.000)
-
-float sigmoid(float x);
-float sigmoid_prime(float x);
-float loss_function(float x, float y);
-float loss_prime(float x, float y);
-float relu(float x);
-float relu_prime(float x);
-
-/**************************************************************************************************************/
-
 typedef Network Gradient;
 
 Gradient *create_gradient(Network *nn);
