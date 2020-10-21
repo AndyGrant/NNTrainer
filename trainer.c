@@ -64,13 +64,12 @@ int main() {
 
         for (int batch = 0; batch < NSAMPLES / BATCHSIZE; batch++) {
 
-            #pragma omp parallel for schedule(static) num_threads(NTHREADS)
+            #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:loss)
             for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
                 const int tidx = omp_get_thread_num();
                 evaluate_network(nn, evals[tidx], &samples[i]);
                 build_backprop_grad(nn, evals[tidx], grads[tidx], &samples[i]);
                 loss += nn->loss(&samples[i], evals[tidx]->activated[nn->layers-1]);
-
             }
 
             update_network(opt, nn, grads, LEARNRATE, BATCHSIZE);
@@ -130,7 +129,7 @@ void delete_network(Network *nn) {
 
 void randomize_network(Network *nn) {
 
-    #define uniform() ((float) (rand() + 1) / (RAND_MAX + 2))
+    #define uniform() ((float) (rand() + 1) / ((float) RAND_MAX + 2))
     #define random()  (sqrt(-2.0 * log(uniform())) * cos(2 * M_PI * uniform()))
 
     for (int i = 0; i < nn->layers; i++)
