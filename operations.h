@@ -21,6 +21,7 @@
 #include "activate.h"
 #include "matrix.h"
 #include "vector.h"
+#include "trainer.h"
 
 void add_array_to_vector(Vector *vector, float *addends);
 void add_array_mul_vector_to_matrix(Matrix *matrix, float *mulends, Vector *vector);
@@ -28,3 +29,11 @@ void activate_layer(Vector *input, Vector *output, Activation func);
 
 void set_vector_vec_mul_mat(float *output, float *vec, Matrix *mat);
 void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float));
+
+void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *output);
+void affine_transform(Vector *vector, Matrix *matrix, Vector *bias, Vector *output);
+void evaluate_network(Network *nn, Evaluator *eval, Sample *sample);
+
+void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample);
+void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer);
+void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta);

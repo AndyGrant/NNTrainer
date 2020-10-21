@@ -28,13 +28,6 @@
 
 typedef struct Sample Sample;
 
-/**************************************************************************************************************/
-
-void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *output);
-void affine_transform_bias(Vector *vector, Matrix *matrix, Vector *bias, Vector *output);
-
-/**************************************************************************************************************/
-
 typedef struct Layer {
     int inputs, outputs;
     Activation activation, derivative;
@@ -59,15 +52,13 @@ void save_network(Network *nn, char *fname);
 void load_network(Network *nn, char *fname);
 
 typedef struct Evaluator {
-    Vector **neurons;
-    Vector **activations;
+    Vector **unactivated;
+    Vector **activated;
     int layers;
 } Evaluator;
 
 Evaluator *create_evaluator(Network *nn);
 void delete_evaluator(Evaluator *eval);
-
-void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample);
 
 /**************************************************************************************************************/
 
@@ -80,10 +71,6 @@ typedef struct Gradient {
 Gradient *create_gradient(Network *nn);
 void delete_gradient(Gradient *grad);
 void zero_gradient(Gradient *grad);
-
-void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample);
-void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer);
-void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta);
 
 /**************************************************************************************************************/
 

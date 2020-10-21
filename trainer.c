@@ -47,9 +47,9 @@ int main() {
 
         for (int i = 0; i < NSAMPLES; i++) {
 
-            sparse_evaluate_network(nn, eval, &samples[i]);
+            evaluate_network(nn, eval, &samples[i]);
             build_backprop_grad(nn, eval, grad, &samples[i]);
-            loss += nn->loss(&samples[i], eval->activations[nn->layers-1]);
+            loss += nn->loss(&samples[i], eval->activated[nn->layers-1]);
 
             if ((i && i % BATCHSIZE == 0))
                 update_network(opt, nn, grad, LEARNRATE, BATCHSIZE);
@@ -65,29 +65,6 @@ int main() {
         save_network(nn, fname);
     }
 }
-
-/**************************************************************************************************************/
-
-void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *output) {
-
-    for (int i = 0; i < output->length; i++)
-        output->values[i] = bias->values[i];
-
-    for (int i = 0; i < sample->length; i++)
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
-}
-
-void affine_transform(Vector *vector, Matrix *matrix, Vector *bias, Vector *output) {
-
-    set_vector(output, bias->values);
-
-    for (int i = 0; i < matrix->rows; i++)
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[j] += vector->values[i] * matrix->values[i * matrix->cols + j];
-}
-
-/**************************************************************************************************************/
 
 Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop) {
 
@@ -173,12 +150,12 @@ Evaluator *create_evaluator(Network *nn) {
 
     Evaluator *eval   = malloc(sizeof(Evaluator));
     eval->layers      = nn->layers;
-    eval->neurons     = malloc(sizeof(Vector*) * eval->layers);
-    eval->activations = malloc(sizeof(Vector*) * eval->layers);
+    eval->unactivated = malloc(sizeof(Vector*) * eval->layers);
+    eval->activated   = malloc(sizeof(Vector*) * eval->layers);
 
     for (int i = 0; i < eval->layers; i++) {
-        eval->neurons[i]     = create_vector(nn->biases[i]->length);
-        eval->activations[i] = create_vector(nn->biases[i]->length);
+        eval->unactivated[i] = create_vector(nn->biases[i]->length);
+        eval->activated[i]   = create_vector(nn->biases[i]->length);
     }
 
     return eval;
@@ -187,53 +164,13 @@ Evaluator *create_evaluator(Network *nn) {
 void delete_evaluator(Evaluator *eval) {
 
     for (int i = 0; i < eval->layers; i++) {
-        delete_vector(eval->neurons[i]);
-        delete_vector(eval->activations[i]);
+        delete_vector(eval->unactivated[i]);
+        delete_vector(eval->activated[i]);
     }
 
-    free(eval->neurons);
-    free(eval->activations);
+    free(eval->unactivated);
+    free(eval->activated);
     free(eval);
-}
-
-
-void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample) {
-
-    assert(nn->layers == eval->layers);
-
-    int layer = 0;
-
-    // Input Layer
-
-    {
-        input_transform(sample, nn->weights[0], nn->biases[0], eval->neurons[0]);
-        activate_layer(eval->neurons[0], eval->activations[0], nn->activations[0]);
-        layer++;
-    }
-
-    // Hidden Layers
-
-    while (layer < nn->layers - 1) {
-
-        affine_transform(
-            eval->activations[layer-1], nn->weights[layer],
-            nn->biases[layer], eval->neurons[layer]
-        );
-
-        activate_layer(eval->neurons[layer], eval->activations[layer], nn->activations[layer]);
-        layer++;
-    }
-
-    // Output Layer
-
-    {
-        affine_transform(
-            eval->activations[layer-1], nn->weights[layer],
-            nn->biases[layer], eval->neurons[layer]
-        );
-
-        activate_layer(eval->neurons[layer], eval->activations[layer], nn->activations[layer]);
-    }
 }
 
 /**************************************************************************************************************/
@@ -277,40 +214,6 @@ void zero_gradient(Gradient *grad) {
     }
 }
 
-
-void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample) {
-
-    const Vector *outputs = eval->activations[nn->layers-1];
-
-    float dlossdz[outputs->length];
-
-    nn->backprop(sample, outputs, dlossdz);
-
-    apply_backprop(nn, eval, grad, sample, dlossdz, nn->layers-1);
-}
-
-void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer) {
-
-    if (layer == 0)
-        return apply_backprop_input(nn, eval, grad, sample, delta);
-
-    float delta_d1[grad->weights[layer]->rows];
-    mul_vector_func_of_vec(delta, eval->neurons[layer], nn->derivatives[layer]);
-    add_array_to_vector(grad->biases[layer], delta);
-    add_array_mul_vector_to_matrix(grad->weights[layer], delta, eval->activations[layer-1]);
-    set_vector_vec_mul_mat(delta_d1, delta, nn->weights[layer]);
-    apply_backprop(nn, eval, grad, sample, delta_d1, layer-1);
-}
-
-void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta) {
-
-    mul_vector_func_of_vec(delta, eval->neurons[0], nn->derivatives[0]);
-    add_array_to_vector(grad->biases[0], delta);
-
-    for (int i = 0; i < sample->length; i++)
-        for (int j = 0; j < grad->weights[0]->cols; j++)
-            grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += delta[j];
-}
 
 /**************************************************************************************************************/
 
