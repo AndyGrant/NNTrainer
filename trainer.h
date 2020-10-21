@@ -46,10 +46,13 @@ typedef struct Network {
     Vector **biases;
     Activation *activations;
     Activation *derivatives;
+    Loss loss;
+    BackProp backprop;
     int layers;
 } Network;
 
-Network *create_network(int length, Layer *layers);
+Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop);
+
 void delete_network(Network *nn);
 void print_network(Network *nn);
 void randomize_network(Network *nn);
@@ -75,11 +78,14 @@ void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample);
 
 /**************************************************************************************************************/
 
-typedef Network Gradient;
+typedef struct Gradient {
+    Matrix **weights;
+    Vector **biases;
+    int layers;
+} Gradient;
 
 Gradient *create_gradient(Network *nn);
 void delete_gradient(Gradient *grad);
-void print_gradient(Gradient *grad);
 void zero_gradient(Gradient *grad);
 
 void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample);

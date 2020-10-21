@@ -35,7 +35,7 @@ int main() {
     Network *nn = create_network(2, (Layer[]) {
         { 768, 96, &relu    , &relu_prime    },
         {  96,  1, &sigmoid , &sigmoid_prime },
-    });
+    }, l2_loss_one_neuron, l2_loss_one_neuron_backprop);
 
     Optimizer *opt  = create_optimizer(nn);
     Evaluator *eval = create_evaluator(nn);
@@ -49,8 +49,7 @@ int main() {
 
             sparse_evaluate_network(nn, eval, &samples[i]);
             build_backprop_grad(nn, eval, grad, &samples[i]);
-
-            loss += loss_function(eval->activations[nn->layers-1]->values[0], samples[i].result);
+            loss += nn->loss(&samples[i], eval->activations[nn->layers-1]);
 
             if ((i && i % BATCHSIZE == 0))
                 update_network(opt, nn, grad, LEARNRATE, BATCHSIZE);
@@ -90,11 +89,14 @@ void affine_transform(Vector *vector, Matrix *matrix, Vector *bias, Vector *outp
 
 /**************************************************************************************************************/
 
-Network *create_network(int length, Layer *layers) {
+Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop) {
 
     Network *nn = malloc(sizeof(Network));
 
-    nn->layers      = length;
+    nn->layers   = length;
+    nn->loss     = loss;
+    nn->backprop = backprop;
+
     nn->weights     = malloc(sizeof(Matrix*) * length);
     nn->biases      = malloc(sizeof(Vector*) * length);
     nn->activations = malloc(sizeof(Activation) * length);
@@ -119,8 +121,10 @@ void delete_network(Network *nn) {
         delete_vector(nn->biases[i]);
     }
 
-    free(nn->weights);
-    free(nn->biases);
+    free(nn->weights    );
+    free(nn->biases     );
+    free(nn->activations);
+    free(nn->derivatives);
     free(nn);
 }
 
@@ -284,11 +288,15 @@ Gradient *create_gradient(Network *nn) {
 }
 
 void delete_gradient(Gradient *grad) {
-    delete_network(grad);
-}
 
-void print_gradient(Gradient *grad) {
-    print_network(grad);
+    for (int i = 0; i < grad->layers; i++) {
+        delete_matrix(grad->weights[i]);
+        delete_vector(grad->biases[i]);
+    }
+
+    free(grad->weights);
+    free(grad->biases );
+    free(grad);
 }
 
 void zero_gradient(Gradient *grad) {
@@ -306,13 +314,13 @@ void zero_gradient(Gradient *grad) {
 
 void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample) {
 
-    const int final  = nn->layers - 1;
+    const Vector *outputs = eval->activations[nn->layers-1];
 
-    float dloss_dout = loss_prime(eval->activations[final]->values[0], sample->result);
+    float dlossdz[outputs->length];
 
-    float delta[] = { dloss_dout };
+    nn->backprop(sample, outputs, dlossdz);
 
-    apply_backprop(nn, eval, grad, sample, delta, final);
+    apply_backprop(nn, eval, grad, sample, dlossdz, nn->layers-1);
 }
 
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer) {
@@ -322,9 +330,8 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
     if (layer == 0) return apply_backprop_input(nn, eval, grad, sample, delta);
 
     float delta_d1[grad->weights[layer]->rows];
-    float (*activation_prime)(float) = layer == final ? &sigmoid_prime : &relu_prime;
 
-    mul_vector_func_of_vec(delta, eval->neurons[layer], activation_prime);
+    mul_vector_func_of_vec(delta, eval->neurons[layer], nn->derivatives[layer]);
     add_array_to_vector(grad->biases[layer], delta);
     add_array_mul_vector_to_matrix(grad->weights[layer], delta, eval->activations[layer-1]);
     set_vector_vec_mul_mat(delta_d1, delta, nn->weights[layer]);

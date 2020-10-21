@@ -20,6 +20,7 @@
 
 #include "vector.h"
 #include "activate.h"
+#include "trainer.h"
 
 float relu(float x) {
     return fmaxf(0.0, x);
@@ -29,7 +30,6 @@ float relu_prime(float x) {
     return x > 0.0 ? 1.0 : 0.0;
 }
 
-
 float sigmoid(float x) {
     return 1.0 / (1.0 + exp(-SIGM_COEFF * x));
 }
@@ -38,7 +38,6 @@ float sigmoid_prime(float x) {
     float sigm = sigmoid(x);
     return SIGM_COEFF * sigm * (1.0 - sigm);
 }
-
 
 float null_activation(float x) {
     return x;
@@ -55,6 +54,15 @@ float loss_function(float x, float y) {
 
 float loss_prime(float x, float y) {
     return -2.0 * (y - x);
+}
+
+
+float l2_loss_one_neuron(const Sample *sample, const Vector *outputs) {
+    return pow(sample->result - outputs->values[0], 2.0);
+}
+
+void l2_loss_one_neuron_backprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
+    *dlossdz = -2.0 * (sample->result - outputs->values[0]);
 }
 
 
