@@ -18,14 +18,12 @@
 
 #pragma once
 
-#define PRINT_FORMAT "%+10.6f"
-
 typedef struct Vector {
     int length;
     float *values;
 } Vector;
 
 Vector *create_vector(int length);
-void delete_vector(Vector *vec);
-void set_vector(Vector *vec, float *values);
-void zero_vector(Vector *vec);
+void delete_vector(Vector *vector);
+void set_vector(Vector *vector, float *values);
+void zero_vector(Vector *vector);

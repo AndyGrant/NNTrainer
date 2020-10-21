@@ -53,9 +53,3 @@ float loss_prime(float x, float y);
 
 float l2_loss_one_neuron(const Sample *sample, const Vector *outputs);
 void l2_loss_one_neuron_backprop(const Sample *sample, const Vector *outputs, float *dlossdz);
-
-
-/// Not something to add to or to change. Just a generic to apply an Activation
-/// to a layer of the Evaluator. { input[x] = func(output[x]) for all x }
-
-void activate_layer(Vector *input, Vector *output, Activation func);

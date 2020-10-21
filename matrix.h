@@ -18,12 +18,11 @@
 
 #pragma once
 
-#define PRINT_FORMAT "%+10.6f"
-
 typedef struct Matrix {
     int rows, cols;
     float *values;
 } Matrix;
 
 Matrix *create_matrix(int rows, int cols);
-void delete_matrix(Matrix *mat);
+void delete_matrix(Matrix *matrix);
+void zero_matrix(Matrix *matrix);

@@ -22,6 +22,9 @@
 #include "activate.h"
 #include "trainer.h"
 
+/// Activation functions and deriviatives. These functions
+/// are all matching >> typedef float (*Activation) (float);
+
 float relu(float x) {
     return fmaxf(0.0, x);
 }
@@ -48,14 +51,9 @@ float null_activation_prime(float x) {
 }
 
 
-float loss_function(float x, float y) {
-    return pow(y - x, 2.0);
-}
-
-float loss_prime(float x, float y) {
-    return -2.0 * (y - x);
-}
-
+/// Loss and BackProp functions. These functions are all matching
+/// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);
+/// >> typedef void  (*BackProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
 float l2_loss_one_neuron(const Sample *sample, const Vector *outputs) {
     return pow(sample->result - outputs->values[0], 2.0);
@@ -63,10 +61,4 @@ float l2_loss_one_neuron(const Sample *sample, const Vector *outputs) {
 
 void l2_loss_one_neuron_backprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
     *dlossdz = -2.0 * (sample->result - outputs->values[0]);
-}
-
-
-void activate_layer(Vector *input, Vector *output, Activation func) {
-    for (int i = 0; i < input->length; i++)
-        output->values[i] = func(input->values[i]);
 }

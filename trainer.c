@@ -272,12 +272,8 @@ void delete_gradient(Gradient *grad) {
 void zero_gradient(Gradient *grad) {
 
     for (int i = 0; i < grad->layers; i++) {
-
-        for (int j = 0; j < grad->weights[i]->rows * grad->weights[i]->cols; j++)
-            grad->weights[i]->values[j] = 0.0;
-
-        for (int j = 0; j < grad->biases[i]->length; j++)
-            grad->biases[i]->values[j] = 0.0;
+        zero_matrix(grad->weights[i]);
+        zero_vector(grad->biases[i]);
     }
 }
 
@@ -296,7 +292,7 @@ void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *s
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer) {
 
     if (layer == 0)
-        return apply_backprop_input(eval, grad, sample, delta);
+        return apply_backprop_input(nn, eval, grad, sample, delta);
 
     float delta_d1[grad->weights[layer]->rows];
     mul_vector_func_of_vec(delta, eval->neurons[layer], nn->derivatives[layer]);
@@ -306,9 +302,9 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
     apply_backprop(nn, eval, grad, sample, delta_d1, layer-1);
 }
 
-void apply_backprop_input(Evaluator *eval, Gradient *grad, Sample *sample, float *delta) {
+void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta) {
 
-    mul_vector_func_of_vec(delta, eval->neurons[0], &relu_prime);
+    mul_vector_func_of_vec(delta, eval->neurons[0], nn->derivatives[0]);
     add_array_to_vector(grad->biases[0], delta);
 
     for (int i = 0; i < sample->length; i++)

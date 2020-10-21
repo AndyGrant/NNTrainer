@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,7 +53,6 @@ typedef struct Network {
 Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop);
 
 void delete_network(Network *nn);
-void print_network(Network *nn);
 void randomize_network(Network *nn);
 
 void save_network(Network *nn, char *fname);
@@ -68,11 +66,6 @@ typedef struct Evaluator {
 
 Evaluator *create_evaluator(Network *nn);
 void delete_evaluator(Evaluator *eval);
-void print_evaluator(Evaluator *eval);
-
-void activate_null(Vector *input, Vector *output);
-void activate_relu(Vector *input, Vector *output);
-void activate_sigmoid(Vector *input, Vector *output);
 
 void sparse_evaluate_network(Network *nn, Evaluator *eval, Sample *sample);
 
@@ -90,7 +83,7 @@ void zero_gradient(Gradient *grad);
 
 void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample);
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta, int layer);
-void apply_backprop_input(Evaluator *eval, Gradient *grad, Sample *sample, float *delta);
+void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *delta);
 
 /**************************************************************************************************************/
 

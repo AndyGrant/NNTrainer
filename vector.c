@@ -16,26 +16,25 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "vector.h"
 
 Vector *create_vector(int length) {
-    Vector *vec = malloc(sizeof(Vector));
-    *vec = (Vector) { length, calloc(length, sizeof(float)) };
-    return vec;
+    Vector *vector = malloc(sizeof(Vector));
+    *vector = (Vector) { length, calloc(length, sizeof(float)) };
+    return vector;
 }
 
-void delete_vector(Vector *vec) {
-    free(vec->values); free(vec);
+void delete_vector(Vector *vector) {
+    free(vector->values); free(vector);
 }
 
-void set_vector(Vector *vec, float *values) {
-    memcpy(vec->values, values, sizeof(float) * vec->length);
+void set_vector(Vector *vector, float *values) {
+    memcpy(vector->values, values, sizeof(float) * vector->length);
 }
 
-void zero_vector(Vector *vec) {
-    memset(vec->values, 0, sizeof(float) * vec->length);
+void zero_vector(Vector *vector) {
+    memset(vector->values, 0, sizeof(float) * vector->length);
 }

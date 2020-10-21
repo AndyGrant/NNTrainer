@@ -31,6 +31,12 @@ void add_array_mul_vector_to_matrix(Matrix *matrix, float *mulends, Vector *vect
             matrix->values[i * matrix->cols + j] += mulends[j] * vector->values[i];
 }
 
+void activate_layer(Vector *input, Vector *output, Activation func) {
+    for (int i = 0; i < input->length; i++)
+        output->values[i] = func(input->values[i]);
+}
+
+
 void set_vector_vec_mul_mat(float *output, float *vec, Matrix *mat) {
 
     for (int i = 0; i < mat->rows; i++) {
