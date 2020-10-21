@@ -27,6 +27,7 @@
 #include "vector.h"
 #include "operations.h"
 #include "activate.h"
+#include "timing.h"
 
 int main() {
 
@@ -45,6 +46,8 @@ int main() {
 
         float loss = 0.0;
 
+        double start = get_time_point();
+
         for (int i = 0; i < NSAMPLES; i++) {
 
             evaluate_network(nn, eval, &samples[i]);
@@ -57,7 +60,9 @@ int main() {
 
         // update_network(opt, nn, grad, LEARNRATE, NSAMPLES);
 
-        printf("[Epoch %5d] Loss = %.9f\n", epoch, loss / NSAMPLES);
+        double elapsed = (get_time_point() - start) / 1000.0;
+
+        printf("[%4d] [%.3gs] Loss = %.9f\n", epoch, elapsed, loss / NSAMPLES);
         fflush(stdout);
 
         char fname[512];
