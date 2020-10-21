@@ -128,15 +128,19 @@ void randomize_network(Network *nn) {
 
     /*
     We initialize the weights to have a mean of zero and a standard deviation
-    equal to sqrt(2*n) where n is the number of neurons in that layer.
+    equal to sqrt(2*n) where n is the number of neurons in that layer. Note
+    that for example the connections between input and first hidden layer
+    uses n as the neurons in the first hidden layer.
 
     Biases are initialized as zero.
+
+    We correct for the SIGM_COEFF in the final layer of weights
     */
 
     for (int i = 0; i < nn->layers; i++) {
 
         for (int j = 0; j < nn->weights[i]->rows * nn->weights[i]->cols; j++)
-            nn->weights[i]->values[j] = random_normal(0, sqrt(2 * nn->weights[i]->rows));
+            nn->weights[i]->values[j] = random_normal(0, sqrt(2.0 / (i < nn->layers - 1 ? nn->weights[i + 1]->rows : 1) / (i == nn->layers - 1 ? SIGM_COEFF : 1)));
 
         for (int j = 0; j < nn->biases[i]->length; j++)
             nn->biases[i]->values[j] = 0;
