@@ -33,9 +33,9 @@ int main() {
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
 
     Network *nn = create_network(2, (Layer[]) {
-        { 768, 96, &relu    , &relu_prime    },
-        {  96,  1, &sigmoid , &sigmoid_prime },
-    }, l2_loss_one_neuron, l2_loss_one_neuron_backprop);
+        { 768, 96, &activate_relu    , &backprop_relu    },
+        {  96,  1, &activate_sigmoid , &backprop_sigmoid },
+    }, l2_loss_one_neuron, l2_loss_one_neuron_lossprop);
 
     Optimizer *opt  = create_optimizer(nn);
     Evaluator *eval = create_evaluator(nn);
@@ -68,24 +68,24 @@ int main() {
 
 /**************************************************************************************************************/
 
-Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop) {
+Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop) {
 
     Network *nn = malloc(sizeof(Network));
 
     nn->layers   = length;
     nn->loss     = loss;
-    nn->backprop = backprop;
+    nn->lossprop = lossprop;
 
-    nn->weights     = malloc(sizeof(Matrix*) * length);
-    nn->biases      = malloc(sizeof(Vector*) * length);
+    nn->weights     = malloc(sizeof(Matrix*   ) * length);
+    nn->biases      = malloc(sizeof(Vector*   ) * length);
     nn->activations = malloc(sizeof(Activation) * length);
-    nn->derivatives = malloc(sizeof(Activation) * length);
+    nn->backprops   = malloc(sizeof(BackProp  ) * length);
 
     for (int i = 0; i < length; i++) {
         nn->weights[i]     = create_matrix(layers[i].inputs, layers[i].outputs);
         nn->biases[i]      = create_vector(layers[i].outputs);
         nn->activations[i] = layers[i].activation;
-        nn->derivatives[i] = layers[i].derivative;
+        nn->backprops[i]   = layers[i].backprop;
     }
 
     randomize_network(nn);
@@ -103,7 +103,7 @@ void delete_network(Network *nn) {
     free(nn->weights    );
     free(nn->biases     );
     free(nn->activations);
-    free(nn->derivatives);
+    free(nn->backprops  );
     free(nn);
 }
 

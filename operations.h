@@ -25,7 +25,6 @@ void add_array_mul_vector_to_matrix(Matrix *matrix, float *mulends, Vector *vect
 void activate_layer(Vector *input, Vector *output, Activation func);
 
 void set_vector_vec_mul_mat(float *output, float *vec, Matrix *mat);
-void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float));
 
 void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *output);
 void affine_transform(Vector *vector, Matrix *matrix, Vector *bias, Vector *output);

@@ -22,9 +22,6 @@
 #include "activate.h"
 #include "trainer.h"
 
-/// Activation functions and deriviatives. These functions
-/// are all matching >> typedef float (*Activation) (float);
-
 float relu(float x) {
     return fmaxf(0.0, x);
 }
@@ -51,14 +48,54 @@ float null_activation_prime(float x) {
 }
 
 
-/// Loss and BackProp functions. These functions are all matching
+/// Activation functions. These functions are all matching
+/// >> typedef void (*Activation) (Vector*, const Vector*);
+
+void activate_relu(Vector *input, const Vector *output) {
+    for (int i = 0; i < input->length; i++)
+        output->values[i] = relu(input->values[i]);
+}
+
+void activate_sigmoid(Vector *input, const Vector *output) {
+    for (int i = 0; i < input->length; i++)
+        output->values[i] = sigmoid(input->values[i]);
+}
+
+void activate_null(Vector *input, const Vector *output) {
+    for (int i = 0; i < input->length; i++)
+        output->values[i] = null_activation(input->values[i]);
+}
+
+
+/// BackProp functions. These functions are all matching
+/// >>typedef void (*BackProp) (float *dlossdz, const Vector *vector);
+
+void backprop_relu(float *dlossdz, const Vector *vector) {
+    for (int i = 0; i < vector->length; i++)
+        dlossdz[i] *= relu_prime(vector->values[i]);
+}
+
+void backprop_sigmoid(float *dlossdz, const Vector *vector) {
+    for (int i = 0; i < vector->length; i++)
+        dlossdz[i] *= sigmoid_prime(vector->values[i]);
+}
+
+void backprop_null(float *dlossdz, const Vector *vector) {
+    for (int i = 0; i < vector->length; i++)
+        dlossdz[i] *= null_activation_prime(vector->values[i]);
+}
+
+
+/// Loss and LossProp functions. These functions are all matching
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);
-/// >> typedef void  (*BackProp) (const Sample*, const Vector *outputs, float *dlossdz);
+/// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
 float l2_loss_one_neuron(const Sample *sample, const Vector *outputs) {
     return pow(sample->result - outputs->values[0], 2.0);
 }
 
-void l2_loss_one_neuron_backprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
+void l2_loss_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
     *dlossdz = -2.0 * (sample->result - outputs->values[0]);
 }
+
+

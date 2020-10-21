@@ -26,20 +26,25 @@
 
 typedef struct Layer {
     int inputs, outputs;
-    Activation activation, derivative;
+    Activation activation;
+    BackProp backprop;
 } Layer;
 
 typedef struct Network {
+
+    int layers;
     Matrix **weights;
     Vector **biases;
+
     Activation *activations;
-    Activation *derivatives;
+    BackProp *backprops;
+
     Loss loss;
-    BackProp backprop;
-    int layers;
+    LossProp lossprop;
+
 } Network;
 
-Network *create_network(int length, Layer *layers, Loss loss, BackProp backprop);
+Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop);
 
 void delete_network(Network *nn);
 void randomize_network(Network *nn);
