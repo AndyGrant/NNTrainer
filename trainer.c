@@ -15,7 +15,7 @@ int main() {
     Evaluator *eval = create_evaluator(nn);
     Gradient *grad  = create_gradient(nn);
 
-    for (int epoch = 0; epoch < 25; epoch++) {
+    for (int epoch = 0; epoch < 25000; epoch++) {
 
         float loss = 0.0;
 
@@ -34,6 +34,10 @@ int main() {
 
         printf("[Epoch %5d] Loss = %.9f\n", epoch, loss / NSAMPLES);
         fflush(stdout);
+
+        char fname[512];
+        sprintf(fname, "%sepoch%d.nn", "Networks/", epoch);
+        save_network(nn, fname);
     }
 }
 
@@ -245,6 +249,30 @@ void randomize_network(Network *nn) {
     }
 
     #undef random_weight
+}
+
+
+void save_network(Network *nn, char *fname) {
+
+    FILE *fout = fopen(fname, "w");
+
+    for (int layer = 0; layer < nn->layers; layer++) {
+
+        const int rows = nn->weights[layer]->rows;
+        const int cols = nn->weights[layer]->cols;
+
+        for (int col = 0; col < cols; col++) {
+            fprintf(fout, "\"%d ", rows);
+            for (int row = 0; row < rows; row++)
+                fprintf(fout, "%f ", nn->weights[layer]->values[row * cols + col]);
+            fprintf(fout, "%f\",\n", nn->biases[layer]->values[col]);
+        }
+    }
+
+    fclose(fout);
+}
+
+void load_network(Network *nn, char *fname) {
 }
 
 

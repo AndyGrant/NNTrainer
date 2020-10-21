@@ -54,6 +54,9 @@ void delete_network(Network *nn);
 void print_network(Network *nn);
 void randomize_network(Network *nn);
 
+void save_network(Network *nn, char *fname);
+void load_network(Network *nn, char *fname);
+
 typedef struct Evaluator {
     Vector **neurons;
     Vector **activations;
@@ -97,7 +100,7 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 /**************************************************************************************************************/
 
 #define MAX_INDICIES 32
-#define NSAMPLES (8192*64)
+#define NSAMPLES 34589880
 #define DATAFILE "halogen.data"
 
 typedef struct Sample {
@@ -114,7 +117,7 @@ void load_sample(FILE *fin, Sample *sample);
 #define BETA_1 0.9
 #define BETA_2 0.999
 
-#define LEARNRATE  0.01
+#define LEARNRATE  0.001
 #define BATCHSIZE  8192
 
 typedef struct Optimizer {
