@@ -1,3 +1,21 @@
+/*
+  Ethereal is a UCI chess playing engine authored by Andrew Grant.
+  <https://github.com/AndyGrant/Ethereal>     <andrew@grantnet.us>
+
+  Ethereal is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Ethereal is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+
+  GNU General Public License for more details.
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #pragma once
 
 #include <stdarg.h>
@@ -5,38 +23,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "vector.h"
+#include "matrix.h"
+
 typedef struct Sample Sample;
 
 /**************************************************************************************************************/
-
-typedef struct Vector {
-    int length;
-    float *values;
-} Vector;
-
-typedef struct Matrix {
-    int rows, cols;
-    float *values;
-} Matrix;
-
-#define PRINT_FORMAT "%+10.6f"
-
-Vector *create_vector(int length);
-void delete_vector(Vector *vec);
-void print_vector(const Vector *vec);
-void set_vector(Vector *vec, int length, float *values);
-void zero_vector(Vector *vec);
-
-Matrix *create_matrix(int rows, int cols);
-void delete_matrix(Matrix *mat);
-void print_matrix(const Matrix *mat);
-void set_matrix_row(Matrix *mat, int row, int cols, float *values);
-void set_matrix_col(Matrix *mat, int col, int rows, float *values);
-
-void add_vector(Vector *vec, float *addends);
-void add_matrix_vec_mul_vec(Matrix *mat, float *vec1, Vector *vec2);
-void set_vector_vec_mul_mat(float *output, float *vec, Matrix *mat);
-void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float));
 
 void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *output);
 void affine_transform_bias(Vector *vector, Matrix *matrix, Vector *bias, Vector *output);
@@ -100,7 +92,7 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 /**************************************************************************************************************/
 
 #define MAX_INDICIES 32
-#define NSAMPLES 34589880
+#define NSAMPLES 16384
 #define DATAFILE "halogen.data"
 
 typedef struct Sample {

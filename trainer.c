@@ -1,3 +1,21 @@
+/*
+  Ethereal is a UCI chess playing engine authored by Andrew Grant.
+  <https://github.com/AndyGrant/Ethereal>     <andrew@grantnet.us>
+
+  Ethereal is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Ethereal is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+
+  GNU General Public License for more details.
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <assert.h>
 #include <math.h>
 #include <stdarg.h>
@@ -6,6 +24,9 @@
 #include <string.h>
 
 #include "trainer.h"
+#include "matrix.h"
+#include "vector.h"
+#include "operations.h"
 
 int main() {
 
@@ -43,95 +64,7 @@ int main() {
 
 /**************************************************************************************************************/
 
-Vector *create_vector(int length) {
-
-    Vector *vec = malloc(sizeof(Vector));
-    vec->length = length;
-    vec->values = calloc(length, sizeof(float));
-
-    return vec;
-}
-
-void delete_vector(Vector *vec) {
-    free(vec->values); free(vec);
-}
-
-void print_vector(const Vector *vec) {
-
-    printf("[ ");
-
-    for (int i = 0; i < vec->length; i++)
-        printf(PRINT_FORMAT " ", vec->values[i]);
-
-    printf("]\n\n");
-}
-
-void set_vector(Vector *vec, int length, float *values) {
-
-    assert(length == vec->length);
-
-    for (int i = 0; i < length; i++)
-        vec->values[i] = values[i];
-}
-
-void zero_vector(Vector *vec) {
-
-    for (int i = 0; i < vec->length; i++)
-        vec->values[i] = 0.0;
-}
-
-
-Matrix *create_matrix(int rows, int cols) {
-
-    Matrix *mat = malloc(sizeof(Vector));
-    mat->rows   = rows;
-    mat->cols   = cols;
-    mat->values = calloc(rows * cols, sizeof(float));
-
-    return mat;
-}
-
-void delete_matrix(Matrix *mat) {
-    free(mat->values); free(mat);
-}
-
-void print_matrix(const Matrix *mat) {
-
-    printf("[");
-
-    for (int i = 0; i < mat->rows; i++) {
-        printf(i == 0 ? "[ " : " [ ");
-        for (int j = 0; j < mat->cols; j++)
-            printf(PRINT_FORMAT " ", mat->values[i * mat->cols + j]);
-        printf(i == mat->rows - 1 ? "]]\n\n" : "]\n");
-    }
-}
-
-void set_matrix_row(Matrix *mat, int row, int cols, float *values) {
-
-    assert(0 <= row && row < mat->rows);
-    assert(cols == mat->cols);
-
-    for (int j = 0; j < cols; j++)
-        mat->values[row * mat->cols + j] = values[j];
-
-}
-
-void set_matrix_col(Matrix *mat, int col, int rows, float *values) {
-
-    assert(0 <= col && col < mat->cols);
-    assert(rows == mat->rows);
-
-    for (int i = 0; i < rows; i++)
-        mat->values[i * mat->cols + col] = values[i];
-
-}
-
-
 void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *output) {
-
-    assert(output->length == bias->length);
-    assert(output->length == matrix->cols);
 
     for (int i = 0; i < output->length; i++)
         output->values[i] = bias->values[i];
@@ -143,43 +76,11 @@ void input_transform(Sample *sample, Matrix *matrix, Vector *bias, Vector *outpu
 
 void affine_transform(Vector *vector, Matrix *matrix, Vector *bias, Vector *output) {
 
-    assert(output->length == bias->length);
-    assert(output->length == matrix->cols);
-    assert(vector->length == matrix->rows);
-
-    set_vector(output, bias->length, bias->values);
+    set_vector(output, bias->values);
 
     for (int i = 0; i < matrix->rows; i++)
         for (int j = 0; j < matrix->cols; j++)
             output->values[j] += vector->values[i] * matrix->values[i * matrix->cols + j];
-}
-
-
-void add_vector(Vector *vec, float *addends) {
-    for (int i = 0; i < vec->length; i++)
-        vec->values[i] += addends[i];
-}
-
-void add_matrix_vec_mul_vec(Matrix *mat, float *vec1, Vector *vec2) {
-
-    for (int i = 0; i < mat->rows; i++)
-        for (int j = 0; j < mat->cols; j++)
-            mat->values[i * mat->cols + j] += vec1[j] * vec2->values[i];
-}
-
-void set_vector_vec_mul_mat(float *output, float *vec, Matrix *mat) {
-
-    for (int i = 0; i < mat->rows; i++) {
-        output[i] = 0.0;
-        for (int j = 0; j < mat->cols; j++)
-            output[i] += vec[j] * mat->values[i * mat->cols + j];
-    }
-}
-
-void mul_vector_func_of_vec(float *delta, Vector *vec, float (*func)(float)) {
-
-    for (int i = 0; i < vec->length; i++)
-        delta[i] *= func(vec->values[i]);
 }
 
 /**************************************************************************************************************/
@@ -470,8 +371,8 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
     float (*activation_prime)(float) = layer == final ? &sigmoid_prime : &relu_prime;
 
     mul_vector_func_of_vec(delta, eval->neurons[layer], activation_prime);
-    add_vector(grad->biases[layer], delta);
-    add_matrix_vec_mul_vec(grad->weights[layer], delta, eval->activations[layer-1]);
+    add_array_to_vector(grad->biases[layer], delta);
+    add_array_mul_vector_to_matrix(grad->weights[layer], delta, eval->activations[layer-1]);
     set_vector_vec_mul_mat(delta_d1, delta, nn->weights[layer]);
     apply_backprop(nn, eval, grad, sample, delta_d1, layer-1);
 }
@@ -481,13 +382,11 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
     (void) nn;
 
     mul_vector_func_of_vec(delta, eval->neurons[0], &relu_prime);
-    add_vector(grad->biases[0], delta);
+    add_array_to_vector(grad->biases[0], delta);
 
     for (int i = 0; i < sample->length; i++)
         for (int j = 0; j < grad->weights[0]->cols; j++)
             grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += delta[j];
-
-    // add_matrix_vec_mul_vec(grad->weights[0], delta, sample);
 }
 
 /**************************************************************************************************************/

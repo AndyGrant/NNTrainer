@@ -1,0 +1,7 @@
+*
+!*.c
+!*.h
+!Makefile
+!.gitignore
+!README.md
+!LICENSE
