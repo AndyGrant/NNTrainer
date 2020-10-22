@@ -130,7 +130,7 @@ void delete_network(Network *nn) {
 double random_uniform()
 {
     //very important we return a number BETWEEN 0 and 1
-    return (double) (rand() + 1) / (RAND_MAX + 2);
+    return (double) (rand() + 1) / ((double) RAND_MAX + 2);
 }
 
 double random_standard_normal()
@@ -145,7 +145,7 @@ double random_normal(double mean, double sd)
 }
 
 void randomize_network(Network *nn) {
-  
+
     /*
     We initialize the weights to have a mean of zero and a standard deviation
     equal to sqrt(2*n) where n is the number of neurons in that layer. Note
