@@ -74,24 +74,14 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
         int stmk  = sample->turn ? relative_square(BLACK, sample->bking) : sample->wking;
         int nstmk = sample->turn ? relative_square(BLACK, sample->wking) : sample->bking;
 
-        assert(0 <= stmk && stmk < 64);
-        assert(0 <= nstmk && nstmk < 64);
-
         for (int i = 0; i < sample->length; i++) {
 
             int pawn_colour = sample->indices[i] % 2;
             int pawn_sq     = (sample->indices[i] - pawn_colour) / 2;
             int rel_pawn_sq = relative_square(sample->turn, pawn_sq);
 
-            assert(pawn_colour == WHITE || pawn_colour == BLACK);
-            assert(0 <= pawn_sq && pawn_sq < 64);
-            assert(0 <= rel_pawn_sq && rel_pawn_sq < 64);
-
             int seg1_idx = 2 * 64 *  stmk + 2 * rel_pawn_sq + (sample->turn == pawn_colour);
             int seg2_idx = 2 * 64 * nstmk + 2 * rel_pawn_sq + (sample->turn != pawn_colour);
-
-            assert(0 <= seg1_idx && seg1_idx < matrix->rows);
-            assert(0 <= seg2_idx && seg2_idx < matrix->rows);
 
             for (int j = 0; j < matrix->cols; j++)
                 output->values[seg1_head + j] += matrix->values[seg1_idx * matrix->cols + j];
@@ -176,24 +166,14 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
         int stmk  = sample->turn ? relative_square(BLACK, sample->bking) : sample->wking;
         int nstmk = sample->turn ? relative_square(BLACK, sample->wking) : sample->bking;
 
-        assert(0 <= stmk && stmk < 64);
-        assert(0 <= nstmk && nstmk < 64);
-
         for (int i = 0; i < sample->length; i++) {
 
             int pawn_colour = sample->indices[i] % 2;
             int pawn_sq     = (sample->indices[i] - pawn_colour) / 2;
             int rel_pawn_sq = relative_square(sample->turn, pawn_sq);
 
-            assert(pawn_colour == WHITE || pawn_colour == BLACK);
-            assert(0 <= pawn_sq && pawn_sq < 64);
-            assert(0 <= rel_pawn_sq && rel_pawn_sq < 64);
-
             int seg1_idx = 2 * 64 *  stmk + 2 * rel_pawn_sq + (sample->turn == pawn_colour);
             int seg2_idx = 2 * 64 * nstmk + 2 * rel_pawn_sq + (sample->turn != pawn_colour);
-
-            assert(0 <= seg1_idx && seg1_idx < grad->weights[0]->rows);
-            assert(0 <= seg2_idx && seg2_idx < grad->weights[0]->rows);
 
             for (int j = 0; j < grad->weights[0]->cols; j++)
                 grad->weights[0]->values[seg1_idx * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
