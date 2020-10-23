@@ -31,7 +31,7 @@ float relu_prime(float x) {
 }
 
 float sigmoid(float x) {
-    return 1.0 / (1.0 + exp(-SIGM_COEFF * x));
+    return 1.0 / (1.0 + expf(-SIGM_COEFF * x));
 }
 
 float sigmoid_prime(float x) {
@@ -88,7 +88,7 @@ void backprop_null(float *dlossdz, const Vector *vector) {
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
 float l2_loss_one_neuron(const Sample *sample, const Vector *outputs) {
-    return pow(sample->result - outputs->values[0], 2.0);
+    return powf(sample->result - outputs->values[0], 2.0);
 }
 
 void l2_loss_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
@@ -107,7 +107,7 @@ float l2_loss_phased(const Sample *sample, const Vector *outputs) {
     float xi   = sample->scale / 128.0;
     float eval = mg * mg_rho + eg * eg_rho * xi + 20.0;
 
-    return pow(sample->result - sigmoid(eval), 2.0);
+    return powf(sample->result - sigmoid(eval), 2.0);
 }
 
 void l2_loss_phased_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {

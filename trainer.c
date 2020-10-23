@@ -137,7 +137,7 @@ void delete_network(Network *nn) {
 void randomize_network(Network *nn) {
 
     #define uniform() ((float) (rand() + 1) / ((float) RAND_MAX + 2))
-    #define random()  (sqrt(-2.0 * log(uniform())) * cos(2 * M_PI * uniform()))
+    #define random()  (sqrtf(-2.0 * log(uniform())) * cos(2 * M_PI * uniform()))
 
     for (int i = 0; i < nn->layers; i++)
         for (int j = 0; j < nn->weights[i]->rows * nn->weights[i]->cols; j++)
@@ -342,10 +342,10 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, float lrate, 
 
             opt->velocity->weights[layer]->values[i]
                 = (BETA_2 * opt->velocity->weights[layer]->values[i])
-                + (1 - BETA_2) * pow(true_grad, 2.0);
+                + (1 - BETA_2) * powf(true_grad, 2.0);
 
             nn->weights[layer]->values[i] -= lrate * opt->momentum->weights[layer]->values[i]
-                                           * (1.0 / (1e-8 + sqrt(opt->velocity->weights[layer]->values[i])));
+                                           * (1.0 / (1e-8 + sqrtf(opt->velocity->weights[layer]->values[i])));
         }
 
         #pragma omp parallel for schedule(static) num_threads(NTHREADS)
@@ -359,10 +359,10 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, float lrate, 
 
             opt->velocity->biases[layer]->values[i]
                 = (BETA_2 * opt->velocity->biases[layer]->values[i])
-                + (1 - BETA_2) * pow(true_grad, 2.0);
+                + (1 - BETA_2) * powf(true_grad, 2.0);
 
             nn->biases[layer]->values[i] -= lrate * opt->momentum->biases[layer]->values[i]
-                                          * (1.0 / (1e-8 + sqrt(opt->velocity->biases[layer]->values[i])));
+                                          * (1.0 / (1e-8 + sqrtf(opt->velocity->biases[layer]->values[i])));
         }
     }
 
