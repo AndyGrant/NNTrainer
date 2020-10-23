@@ -18,6 +18,9 @@
 
 #pragma once
 
+enum { NORMAL, HALF };
+enum { WHITE, BLACK };
+
 typedef struct Evaluator Evaluator;
 typedef struct Gradient  Gradient;
 typedef struct Layer     Layer;

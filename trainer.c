@@ -40,10 +40,12 @@ int main() {
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
 
-    Network *nn = create_network(2, (Layer[]) {
-        { 768, 96, &activate_relu    , &backprop_relu    },
-        {  96,  1, &activate_sigmoid , &backprop_sigmoid },
-    }, l2_loss_one_neuron, l2_loss_one_neuron_lossprop);
+    Network *nn = create_network(4, (Layer[]) {
+        { 8192, 128, &activate_null, &backprop_null },
+        {  128,  32, &activate_relu, &backprop_relu },
+        {   32,  32, &activate_relu, &backprop_relu },
+        {   32,   2, &activate_null, &backprop_null },
+    }, l2_loss_phased, l2_loss_phased_lossprop, HALF);
 
     Optimizer *opt  = create_optimizer(nn);
 
@@ -88,13 +90,14 @@ int main() {
 
 /**************************************************************************************************************/
 
-Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop) {
+Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop, int type) {
 
     Network *nn = malloc(sizeof(Network));
 
     nn->layers   = length;
     nn->loss     = loss;
     nn->lossprop = lossprop;
+    nn->type     = type;
 
     nn->weights     = malloc(sizeof(Matrix*   ) * length);
     nn->biases      = malloc(sizeof(Vector*   ) * length);
@@ -102,7 +105,11 @@ Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop)
     nn->backprops   = malloc(sizeof(BackProp  ) * length);
 
     for (int i = 0; i < length; i++) {
-        nn->weights[i]     = create_matrix(layers[i].inputs, layers[i].outputs);
+
+        int weight_outs = !i && type == HALF
+                        ? layers[i].outputs / 2 : layers[i].outputs;
+
+        nn->weights[i]     = create_matrix(layers[i].inputs, weight_outs);
         nn->biases[i]      = create_vector(layers[i].outputs);
         nn->activations[i] = layers[i].activation;
         nn->backprops[i]   = layers[i].backprop;
@@ -262,11 +269,24 @@ void load_sample(FILE *fin, Sample *sample) {
     if (fgets(line, 1024, fin) == NULL)
         exit(EXIT_FAILURE);
 
-    sample->length = 0;
-    sample->result = atof(strtok(line, " "));
+    // <R> <MG> <EG> <Rho> <Xi> <STM> <WKSQ> <BKSQ> (<Pawn-Colour>)*
 
+    sample->result = atof(strtok(line, " "));
+    sample->mgeval = atof(strtok(NULL, " "));
+    sample->egeval = atof(strtok(NULL, " "));
+    sample->phase  = atof(strtok(NULL, " "));
+    sample->scale  = atof(strtok(NULL, " "));
+    sample->turn   = atoi(strtok(NULL, " "));
+
+    sample->wking  = atoi(strtok(NULL, " "));
+    sample->bking  = atoi(strtok(NULL, " "));
+
+    sample->length = 0;
     while ((ptr = strtok(NULL, " ")) != NULL)
         sample->indices[sample->length++] = atoi(ptr);
+
+    if (sample->turn)
+        sample->result = 1.0 - sample->result;
 }
 
 /**************************************************************************************************************/

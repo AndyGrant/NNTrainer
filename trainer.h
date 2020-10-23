@@ -38,9 +38,10 @@ typedef struct Network {
     BackProp *backprops;
     Loss loss;
     LossProp lossprop;
+    int type;
 } Network;
 
-Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop);
+Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop, int type);
 
 void delete_network(Network *nn);
 void randomize_network(Network *nn);
@@ -73,13 +74,15 @@ float accumulate_grad_bias(Gradient **grads, int layer, int idx);
 /**************************************************************************************************************/
 
 #define MAX_INDICIES 32
-#define NSAMPLES (1024*256)
-#define DATAFILE "halogen.data"
+#define NSAMPLES 34589880
+#define DATAFILE "kpawns.data"
 
 typedef struct Sample {
     float result;
-    int length;
-    int16_t indices[MAX_INDICIES];
+    float mgeval, egeval;
+    float phase, scale;
+    int turn, wking, bking, length;
+    uint8_t indices[MAX_INDICIES];
 } Sample;
 
 Sample *load_samples(char *fname, int length);
@@ -90,8 +93,8 @@ void load_sample(FILE *fin, Sample *sample);
 #define BETA_1 0.9
 #define BETA_2 0.999
 
-#define LEARNRATE  0.001
-#define BATCHSIZE  8192
+#define LEARNRATE 0.001
+#define BATCHSIZE 8192
 
 typedef struct Optimizer {
     Gradient *momentum;

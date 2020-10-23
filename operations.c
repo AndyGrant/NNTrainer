@@ -22,6 +22,21 @@
 
 #include "trainer.h"
 
+static int file_of(int sq) { return sq % 8; }
+
+static int rank_of(int sq) { return sq / 8; }
+
+static int square(int rank, int file) { return rank * 8 + file; }
+
+static int relative_rank_of(int colour, int sq) {
+    return colour == WHITE ? rank_of(sq) : 7 - rank_of(sq);
+}
+
+static int relative_square(int colour, int sq) {
+    return square(relative_rank_of(colour, sq), file_of(sq));
+}
+
+
 void add_array_to_vector(Vector *vector, const float *addends) {
     for (int i = 0; i < vector->length; i++)
         vector->values[i] += addends[i];
@@ -43,13 +58,48 @@ void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const fl
 }
 
 
-void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output) {
+void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output, int type) {
 
     set_vector(output, bias->values);
 
-    for (int i = 0; i < sample->length; i++)
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
+    if (type == NORMAL) {
+        for (int i = 0; i < sample->length; i++)
+            for (int j = 0; j < matrix->cols; j++)
+                output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
+    }
+
+    else if (type == HALF) {
+
+        int seg1_head = 0, seg2_head = matrix->cols;
+        int stmk  = sample->turn ? relative_square(BLACK, sample->bking) : sample->wking;
+        int nstmk = sample->turn ? relative_square(BLACK, sample->wking) : sample->bking;
+
+        assert(0 <= stmk && stmk < 64);
+        assert(0 <= nstmk && nstmk < 64);
+
+        for (int i = 0; i < sample->length; i++) {
+
+            int pawn_colour = sample->indices[i] % 2;
+            int pawn_sq     = (sample->indices[i] - pawn_colour) / 2;
+            int rel_pawn_sq = relative_square(sample->turn, pawn_sq);
+
+            assert(pawn_colour == WHITE || pawn_colour == BLACK);
+            assert(0 <= pawn_sq && pawn_sq < 64);
+            assert(0 <= rel_pawn_sq && rel_pawn_sq < 64);
+
+            int seg1_idx = 2 * 64 *  stmk + 2 * rel_pawn_sq + (sample->turn == pawn_colour);
+            int seg2_idx = 2 * 64 * nstmk + 2 * rel_pawn_sq + (sample->turn != pawn_colour);
+
+            assert(0 <= seg1_idx && seg1_idx < matrix->rows);
+            assert(0 <= seg2_idx && seg2_idx < matrix->rows);
+
+            for (int j = 0; j < matrix->cols; j++)
+                output->values[seg1_head + j] += matrix->values[seg1_idx * matrix->cols + j];
+
+            for (int j = 0; j < matrix->cols; j++)
+                output->values[seg2_head + j] += matrix->values[seg2_idx * matrix->cols + j];
+        }
+    }
 }
 
 void affine_transform(const Vector *vector, const Matrix *matrix, const Vector *bias, Vector *output) {
@@ -67,7 +117,7 @@ void evaluate_network(const Network *nn, Evaluator *eval, const Sample *sample) 
         Vector *outputs   = eval->unactivated[0];
         Vector *activated = eval->activated[0];
 
-        input_transform(sample, nn->weights[0], nn->biases[0], outputs);
+        input_transform(sample, nn->weights[0], nn->biases[0], outputs, nn->type);
         nn->activations[0](outputs, activated);
     }
 
@@ -114,7 +164,42 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
     nn->backprops[0](dlossdz, eval->unactivated[0]);
     add_array_to_vector(grad->biases[0], dlossdz);
 
-    for (int i = 0; i < sample->length; i++)
-        for (int j = 0; j < grad->weights[0]->cols; j++)
-            grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += dlossdz[j];
+    if (nn->type == NORMAL) {
+        for (int i = 0; i < sample->length; i++)
+            for (int j = 0; j < grad->weights[0]->cols; j++)
+                grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += dlossdz[j];
+    }
+
+    else if (nn->type == HALF) {
+
+        int seg1_head = 0, seg2_head = grad->weights[0]->cols;
+        int stmk  = sample->turn ? relative_square(BLACK, sample->bking) : sample->wking;
+        int nstmk = sample->turn ? relative_square(BLACK, sample->wking) : sample->bking;
+
+        assert(0 <= stmk && stmk < 64);
+        assert(0 <= nstmk && nstmk < 64);
+
+        for (int i = 0; i < sample->length; i++) {
+
+            int pawn_colour = sample->indices[i] % 2;
+            int pawn_sq     = (sample->indices[i] - pawn_colour) / 2;
+            int rel_pawn_sq = relative_square(sample->turn, pawn_sq);
+
+            assert(pawn_colour == WHITE || pawn_colour == BLACK);
+            assert(0 <= pawn_sq && pawn_sq < 64);
+            assert(0 <= rel_pawn_sq && rel_pawn_sq < 64);
+
+            int seg1_idx = 2 * 64 *  stmk + 2 * rel_pawn_sq + (sample->turn == pawn_colour);
+            int seg2_idx = 2 * 64 * nstmk + 2 * rel_pawn_sq + (sample->turn != pawn_colour);
+
+            assert(0 <= seg1_idx && seg1_idx < grad->weights[0]->rows);
+            assert(0 <= seg2_idx && seg2_idx < grad->weights[0]->rows);
+
+            for (int j = 0; j < grad->weights[0]->cols; j++)
+                grad->weights[0]->values[seg1_idx * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
+
+            for (int j = 0; j < grad->weights[0]->cols; j++)
+                grad->weights[0]->values[seg2_idx * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+        }
+    }
 }

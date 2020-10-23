@@ -47,7 +47,6 @@ float null_activation_prime(float x) {
     (void) x; return 1.0;
 }
 
-
 /// Activation functions. These functions are all matching
 /// >> typedef void (*Activation) (Vector*, const Vector*);
 
@@ -65,7 +64,6 @@ void activate_null(Vector *input, const Vector *output) {
     for (int i = 0; i < input->length; i++)
         output->values[i] = null_activation(input->values[i]);
 }
-
 
 /// BackProp functions. These functions are all matching
 /// >>typedef void (*BackProp) (float *dlossdz, const Vector *vector);
@@ -85,7 +83,6 @@ void backprop_null(float *dlossdz, const Vector *vector) {
         dlossdz[i] *= null_activation_prime(vector->values[i]);
 }
 
-
 /// Loss and LossProp functions. These functions are all matching
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
@@ -98,4 +95,34 @@ void l2_loss_one_neuron_lossprop(const Sample *sample, const Vector *outputs, fl
     *dlossdz = -2.0 * (sample->result - outputs->values[0]);
 }
 
+
+float l2_loss_phased(const Sample *sample, const Vector *outputs) {
+
+    float mg = sample->mgeval + outputs->values[0];
+    float eg = sample->egeval + outputs->values[1];
+
+    float mg_rho = 1.0 - sample->phase / 24.0;
+    float eg_rho = 0.0 + sample->phase / 24.0;
+
+    float xi   = sample->scale / 128.0;
+    float eval = mg * mg_rho + eg * eg_rho * xi + 20.0;
+
+    return pow(sample->result - sigmoid(eval), 2.0);
+}
+
+void l2_loss_phased_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
+
+    float mg = sample->mgeval + outputs->values[0];
+    float eg = sample->egeval + outputs->values[1];
+
+    float mg_rho = 1.0 - sample->phase / 24.0;
+    float eg_rho = 0.0 + sample->phase / 24.0;
+
+    float xi   = sample->scale / 128.0;
+    float eval = mg * mg_rho + eg * eg_rho * xi + 20.0;
+    float base = -2.0 * sigmoid_prime(eval) * (sample->result - sigmoid(eval));
+
+    dlossdz[0] = base * mg_rho;
+    dlossdz[1] = base * eg_rho * xi;
+}
 
