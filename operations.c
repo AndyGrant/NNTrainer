@@ -36,7 +36,7 @@ static int relative_square(int colour, int sq) {
     return square(relative_rank_of(colour, sq), file_of(sq));
 }
 
-static void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx2) {
+void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx2) {
 
     int stmk  = sample->turn == WHITE ? sample->wking
               : relative_square(BLACK, sample->bking);

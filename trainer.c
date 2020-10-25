@@ -23,12 +23,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "trainer.h"
-#include "matrix.h"
-#include "vector.h"
-#include "operations.h"
 #include "activate.h"
+#include "batch.h"
+#include "matrix.h"
+#include "operations.h"
 #include "timing.h"
+#include "trainer.h"
+#include "vector.h"
 
 int NTHREADS;
 
@@ -39,13 +40,14 @@ int main() {
     printf("Found %d Threads to Train on\n\n", NTHREADS);
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
+    Batch  *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
 
     Network *nn = create_network(5, (Layer[]) {
-        {40960, 128, &activate_null, &backprop_null },
-        {  128,  32, &activate_relu, &backprop_relu },
-        {   32,  32, &activate_relu, &backprop_relu },
-        {   32,  32, &activate_relu, &backprop_relu },
-        {   32,   2, &activate_null, &backprop_null },
+        {40960, 128, &activate_null,    &backprop_null    },
+        {  128,  32, &activate_relu,    &backprop_relu    },
+        {   32,  32, &activate_relu,    &backprop_relu    },
+        {   32,  32, &activate_relu,    &backprop_relu    },
+        {   32,   1, &activate_sigmoid, &backprop_sigmoid },
     }, l2_one_neuron_loss, l2_one_neuron_lossprob, HALF);
 
     Optimizer *opt  = create_optimizer(nn);
@@ -75,7 +77,7 @@ int main() {
                 loss += nn->loss(&samples[i], evals[tidx]->activated[nn->layers-1]);
             }
 
-            update_network(opt, nn, grads, LEARNRATE, BATCHSIZE);
+            update_network(opt, nn, grads, &batches[batch], LEARNRATE, BATCHSIZE);
         }
 
         double elapsed = (get_time_point() - start) / 1000.0;
@@ -271,9 +273,9 @@ void load_sample(FILE *fin, Sample *sample) {
         exit(EXIT_FAILURE);
 
     sample->eval  = atoi(strtok(line, " "));
-    sample->turn  = atoi(strtok(line, " "));
-    sample->wking = atoi(strtok(line, " "));
-    sample->bking = atoi(strtok(line, " "));
+    sample->turn  = atoi(strtok(NULL, " "));
+    sample->wking = atoi(strtok(NULL, " "));
+    sample->bking = atoi(strtok(NULL, " "));
 
     sample->length = 0;
     while ((ptr = strtok(NULL, " ")) != NULL)
@@ -317,9 +319,31 @@ float accumulate_grad_bias(Gradient **grads, int layer, int idx) {
     return total;
 }
 
-void update_network(Optimizer *opt, Network *nn, Gradient **grads, float lrate, int batch_size) {
+void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch, float lrate, int batch_size) {
 
-    for (int layer = 0; layer < nn->layers; layer++) {
+    #pragma omp parallel for schedule(static) num_threads(NTHREADS)
+    for (int idx = 0; idx < batch->inputs; idx++) {
+
+        int start = batch->indices[idx] * nn->weights[0]->cols;
+
+        for (int i = start; i < start + nn->weights[0]->cols; i++) {
+
+            const float true_grad = accumulate_grad_weight(grads, 0, i) / batch_size;
+
+            opt->momentum->weights[0]->values[i]
+                = (BETA_1 * opt->momentum->weights[0]->values[i])
+                + (1 - BETA_1) * true_grad;
+
+            opt->velocity->weights[0]->values[i]
+                = (BETA_2 * opt->velocity->weights[0]->values[i])
+                + (1 - BETA_2) * pow(true_grad, 2.0);
+
+            nn->weights[0]->values[i] -= lrate * opt->momentum->weights[0]->values[i]
+                                       * (1.0 / (1e-8 + sqrt(opt->velocity->weights[0]->values[i])));
+        }
+    }
+
+    for (int layer = 1; layer < nn->layers; layer++) {
 
         const int rows = nn->weights[layer]->rows;
         const int cols = nn->weights[layer]->cols;
@@ -340,6 +364,9 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, float lrate, 
             nn->weights[layer]->values[i] -= lrate * opt->momentum->weights[layer]->values[i]
                                            * (1.0 / (1e-8 + sqrtf(opt->velocity->weights[layer]->values[i])));
         }
+    }
+
+    for (int layer = 0; layer < nn->layers; layer++) {
 
         #pragma omp parallel for schedule(static) num_threads(NTHREADS)
         for (int i = 0; i < nn->biases[layer]->length; i++) {

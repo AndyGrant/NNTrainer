@@ -18,7 +18,11 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include "types.h"
+
+void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx2);
 
 void add_array_to_vector(Vector *vector, const float *addends);
 void add_array_mul_vector_to_matrix(Matrix *matrix, const float *mulends, const Vector *vector);

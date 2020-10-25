@@ -74,7 +74,9 @@ float accumulate_grad_bias(Gradient **grads, int layer, int idx);
 /**************************************************************************************************************/
 
 #define MAX_INDICIES 30
-#define NSAMPLES 16384
+#define MAX_INPUTS 40960
+
+#define NSAMPLES (1024*32)
 #define DATAFILE "nnue.d8"
 
 typedef struct Sample {
@@ -91,7 +93,7 @@ void load_sample(FILE *fin, Sample *sample);
 #define BETA_2 0.999
 
 #define LEARNRATE 0.001
-#define BATCHSIZE 8192
+#define BATCHSIZE 32768
 
 typedef struct Optimizer {
     Gradient *momentum;
@@ -101,6 +103,6 @@ typedef struct Optimizer {
 Optimizer *create_optimizer(Network *nn);
 void delete_optimizer(Optimizer *opt);
 
-void update_network(Optimizer *opt, Network *nn, Gradient **grads, float lrate, int batch_size);
+void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch, float lrate, int batch_size);
 
 /**************************************************************************************************************/
