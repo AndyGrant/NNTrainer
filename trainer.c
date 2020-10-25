@@ -42,10 +42,9 @@ int main() {
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
     Batch  *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
 
-    Network *nn = create_network(5, (Layer[]) {
+    Network *nn = create_network(4, (Layer[]) {
         {40960, 128, &activate_null,    &backprop_null    },
         {  128,  32, &activate_relu,    &backprop_relu    },
-        {   32,  32, &activate_relu,    &backprop_relu    },
         {   32,  32, &activate_relu,    &backprop_relu    },
         {   32,   1, &activate_sigmoid, &backprop_sigmoid },
     }, l2_one_neuron_loss, l2_one_neuron_lossprob, HALF);
