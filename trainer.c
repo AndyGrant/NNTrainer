@@ -40,12 +40,13 @@ int main() {
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
 
-    Network *nn = create_network(4, (Layer[]) {
-        { 8192, 128, &activate_null, &backprop_null },
+    Network *nn = create_network(5, (Layer[]) {
+        {40960, 128, &activate_null, &backprop_null },
         {  128,  32, &activate_relu, &backprop_relu },
         {   32,  32, &activate_relu, &backprop_relu },
+        {   32,  32, &activate_relu, &backprop_relu },
         {   32,   2, &activate_null, &backprop_null },
-    }, l2_loss_phased, l2_loss_phased_lossprop, HALF);
+    }, l2_one_neuron_loss, l2_one_neuron_lossprob, HALF);
 
     Optimizer *opt  = create_optimizer(nn);
 
@@ -269,24 +270,16 @@ void load_sample(FILE *fin, Sample *sample) {
     if (fgets(line, 1024, fin) == NULL)
         exit(EXIT_FAILURE);
 
-    // <R> <MG> <EG> <Rho> <Xi> <STM> <WKSQ> <BKSQ> (<Pawn-Colour>)*
-
-    sample->result = atof(strtok(line, " "));
-    sample->mgeval = atof(strtok(NULL, " "));
-    sample->egeval = atof(strtok(NULL, " "));
-    sample->phase  = atof(strtok(NULL, " "));
-    sample->scale  = atof(strtok(NULL, " "));
-    sample->turn   = atoi(strtok(NULL, " "));
-
-    sample->wking  = atoi(strtok(NULL, " "));
-    sample->bking  = atoi(strtok(NULL, " "));
+    sample->eval  = atoi(strtok(line, " "));
+    sample->turn  = atoi(strtok(line, " "));
+    sample->wking = atoi(strtok(line, " "));
+    sample->bking = atoi(strtok(line, " "));
 
     sample->length = 0;
     while ((ptr = strtok(NULL, " ")) != NULL)
         sample->indices[sample->length++] = atoi(ptr);
 
-    if (sample->turn)
-        sample->result = 1.0 - sample->result;
+    if (sample->turn) sample->eval = -sample->eval;
 }
 
 /**************************************************************************************************************/

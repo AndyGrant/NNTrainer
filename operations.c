@@ -36,6 +36,22 @@ static int relative_square(int colour, int sq) {
     return square(relative_rank_of(colour, sq), file_of(sq));
 }
 
+static void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx2) {
+
+    int stmk  = sample->turn == WHITE ? sample->wking
+              : relative_square(BLACK, sample->bking);
+
+    int nstmk = sample->turn == WHITE ? sample->bking
+              : relative_square(BLACK, sample->wking);
+
+    int relsq = relative_square(sample->turn, encoded % 64);
+    int pcenc = (encoded - (encoded % 64)) / 64;
+    int piece = pcenc % 5, color = pcenc / 5;
+
+    *idx1 = (64 * 10 * stmk ) + (64 * (5 * (color == sample->turn) + piece)) + relsq;
+    *idx2 = (64 * 10 * nstmk) + (64 * (5 * (color != sample->turn) + piece)) + relsq;
+}
+
 
 void add_array_to_vector(Vector *vector, const float *addends) {
     for (int i = 0; i < vector->length; i++)
@@ -71,17 +87,11 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
     else if (type == HALF) {
 
         int seg1_head = 0, seg2_head = matrix->cols;
-        int stmk  = sample->turn ? relative_square(BLACK, sample->bking) : sample->wking;
-        int nstmk = sample->turn ? relative_square(BLACK, sample->wking) : sample->bking;
 
         for (int i = 0; i < sample->length; i++) {
 
-            int pawn_colour = sample->indices[i] % 2;
-            int pawn_sq     = (sample->indices[i] - pawn_colour) / 2;
-            int rel_pawn_sq = relative_square(sample->turn, pawn_sq);
-
-            int seg1_idx = 2 * 64 *  stmk + 2 * rel_pawn_sq + (sample->turn == pawn_colour);
-            int seg2_idx = 2 * 64 * nstmk + 2 * rel_pawn_sq + (sample->turn != pawn_colour);
+            int seg1_idx, seg2_idx;
+            compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
 
             for (int j = 0; j < matrix->cols; j++)
                 output->values[seg1_head + j] += matrix->values[seg1_idx * matrix->cols + j];
@@ -163,17 +173,11 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
     else if (nn->type == HALF) {
 
         int seg1_head = 0, seg2_head = grad->weights[0]->cols;
-        int stmk  = sample->turn ? relative_square(BLACK, sample->bking) : sample->wking;
-        int nstmk = sample->turn ? relative_square(BLACK, sample->wking) : sample->bking;
 
         for (int i = 0; i < sample->length; i++) {
 
-            int pawn_colour = sample->indices[i] % 2;
-            int pawn_sq     = (sample->indices[i] - pawn_colour) / 2;
-            int rel_pawn_sq = relative_square(sample->turn, pawn_sq);
-
-            int seg1_idx = 2 * 64 *  stmk + 2 * rel_pawn_sq + (sample->turn == pawn_colour);
-            int seg2_idx = 2 * 64 * nstmk + 2 * rel_pawn_sq + (sample->turn != pawn_colour);
+            int seg1_idx, seg2_idx;
+            compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
 
             for (int j = 0; j < grad->weights[0]->cols; j++)
                 grad->weights[0]->values[seg1_idx * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];

@@ -87,42 +87,41 @@ void backprop_null(float *dlossdz, const Vector *vector) {
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
-float l2_loss_one_neuron(const Sample *sample, const Vector *outputs) {
-    return powf(sample->result - outputs->values[0], 2.0);
+float l2_one_neuron_loss(const Sample *sample, const Vector *outputs) {
+    return powf(sigmoid(sample->eval) - outputs->values[0], 2.0);
 }
 
-void l2_loss_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
-    *dlossdz = -2.0 * (sample->result - outputs->values[0]);
+void l2_one_neuron_lossprob(const Sample *sample, const Vector *outputs, float *dlossdz) {
+    *dlossdz = -2.0 * (sigmoid(sample->eval) - outputs->values[0]);
 }
 
-
-float l2_loss_phased(const Sample *sample, const Vector *outputs) {
-
-    float mg = sample->mgeval + outputs->values[0];
-    float eg = sample->egeval + outputs->values[1];
-
-    float mg_rho = 1.0 - sample->phase / 24.0;
-    float eg_rho = 0.0 + sample->phase / 24.0;
-
-    float xi   = sample->scale / 128.0;
-    float eval = mg * mg_rho + eg * eg_rho * xi + 20.0;
-
-    return powf(sample->result - sigmoid(eval), 2.0);
-}
-
-void l2_loss_phased_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
-
-    float mg = sample->mgeval + outputs->values[0];
-    float eg = sample->egeval + outputs->values[1];
-
-    float mg_rho = 1.0 - sample->phase / 24.0;
-    float eg_rho = 0.0 + sample->phase / 24.0;
-
-    float xi   = sample->scale / 128.0;
-    float eval = mg * mg_rho + eg * eg_rho * xi + 20.0;
-    float base = -2.0 * sigmoid_prime(eval) * (sample->result - sigmoid(eval));
-
-    dlossdz[0] = base * mg_rho;
-    dlossdz[1] = base * eg_rho * xi;
-}
+// float l2_loss_phased(const Sample *sample, const Vector *outputs) {
+//
+//     float mg = sample->mgeval + outputs->values[0];
+//     float eg = sample->egeval + outputs->values[1];
+//
+//     float mg_rho = 1.0 - sample->phase / 24.0;
+//     float eg_rho = 0.0 + sample->phase / 24.0;
+//
+//     float xi   = sample->scale / 128.0;
+//     float eval = mg * mg_rho + eg * eg_rho * xi + 20.0;
+//
+//     return powf(sample->eval - sigmoid(eval), 2.0);
+// }
+//
+// void l2_loss_phased_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
+//
+//     float mg = sample->mgeval + outputs->values[0];
+//     float eg = sample->egeval + outputs->values[1];
+//
+//     float mg_rho = 1.0 - sample->phase / 24.0;
+//     float eg_rho = 0.0 + sample->phase / 24.0;
+//
+//     float xi   = sample->scale / 128.0;
+//     float eval = mg * mg_rho + eg * eg_rho * xi + 20.0;
+//     float base = -2.0 * sigmoid_prime(eval) * (sample->eval - sigmoid(eval));
+//
+//     dlossdz[0] = base * mg_rho;
+//     dlossdz[1] = base * eg_rho * xi;
+// }
 

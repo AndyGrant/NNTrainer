@@ -20,7 +20,7 @@
 
 #include "types.h"
 
-#define SIGM_COEFF (2.278224480 / 400.000)
+#define SIGM_COEFF (2.27 / 400.00)
 
 float relu(float x);
 float relu_prime(float x);
@@ -52,8 +52,8 @@ void backprop_null(float *dlossdz, const Vector *vector);
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
-float l2_loss_one_neuron(const Sample *sample, const Vector *outputs);
-void l2_loss_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz);
+float l2_one_neuron_loss(const Sample *sample, const Vector *outputs);
+void l2_one_neuron_lossprob(const Sample *sample, const Vector *outputs, float *dlossdz);
 
 float l2_loss_phased(const Sample *sample, const Vector *outputs);
 void l2_loss_phased_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz);

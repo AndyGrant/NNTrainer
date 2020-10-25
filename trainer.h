@@ -73,16 +73,13 @@ float accumulate_grad_bias(Gradient **grads, int layer, int idx);
 
 /**************************************************************************************************************/
 
-#define MAX_INDICIES 32
-#define NSAMPLES 34589880
-#define DATAFILE "kpawns.data"
+#define MAX_INDICIES 30
+#define NSAMPLES 16384
+#define DATAFILE "nnue.d8"
 
 typedef struct Sample {
-    float result;
-    float mgeval, egeval;
-    float phase, scale;
-    int turn, wking, bking, length;
-    uint8_t indices[MAX_INDICIES];
+    int eval, turn, wking, bking, length;
+    uint16_t indices[MAX_INDICIES];
 } Sample;
 
 Sample *load_samples(char *fname, int length);
