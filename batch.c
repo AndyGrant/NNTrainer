@@ -22,16 +22,21 @@
 #include "trainer.h"
 #include "operations.h"
 
+extern int NTHREADS;
+
 Batch *create_batches(Sample *samples, int nsamples, int batch_size) {
 
+    int completed = 0;
     Batch *batches = malloc(sizeof(Batch) * nsamples / batch_size);
 
     printf("Allocated %.2fMB for Batch Optimization\n",
         (float)(sizeof(Batch) * nsamples / batch_size) / (1024 * 1024));
+    fflush(stdout);
 
+    #pragma omp parallel for schedule(static) num_threads(16) shared(NTHREADS)
     for (int i = 0; i < nsamples / batch_size; i++) {
         create_batch(&batches[i], &samples[i * batch_size], batch_size);
-        printf("\rCreated %d of %d Batch Lists\n", i + 1, nsamples / batch_size);
+        printf("\rCreated %d of %d Batch Lists", ++completed, nsamples / batch_size);
         fflush(stdout);
     }
 

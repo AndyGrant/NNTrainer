@@ -246,6 +246,7 @@ Sample *load_samples(char *fname, int length) {
     Sample *samples = malloc(sizeof(Sample) * length);
     printf("Allocated %.2fMB for Samples\n",
         (float)(sizeof(Sample) * length) / (1024 * 1024));
+    fflush(stdout);
 
     FILE *fin = fopen(fname, "r");
 
@@ -260,6 +261,7 @@ Sample *load_samples(char *fname, int length) {
     }
 
     printf("\nFinished Reading %s\n\n", fname);
+    fflush(stdout);
 
     fclose(fin);
 
