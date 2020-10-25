@@ -151,7 +151,8 @@ void save_network(Network *nn, char *fname) {
 
     FILE *fout = fopen(fname, "wb");
 
-    {
+    if (nn->type == HALF) {
+
         const int rows = nn->weights[0]->rows;
         const int cols = nn->weights[0]->cols;
 
@@ -166,7 +167,7 @@ void save_network(Network *nn, char *fname) {
         }
     }
 
-    for (int layer = 1; layer < nn->layers; layer++) {
+    for (int layer = nn->type == HALF; layer < nn->layers; layer++) {
 
         const int rows = nn->weights[layer]->rows;
         const int cols = nn->weights[layer]->cols;
