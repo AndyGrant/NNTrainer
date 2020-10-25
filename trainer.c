@@ -36,21 +36,19 @@ int NTHREADS;
 int main() {
 
     NTHREADS = omp_get_max_threads();
-
     printf("Found %d Threads to Train on\n\n", NTHREADS);
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
     Batch  *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
 
     Network *nn = create_network(4, (Layer[]) {
-        {40960, 128, &activate_null,    &backprop_null    },
-        {  128,  32, &activate_relu,    &backprop_relu    },
+        {40960, 512, &activate_relu,    &backprop_relu    },
+        {  512,  32, &activate_relu,    &backprop_relu    },
         {   32,  32, &activate_relu,    &backprop_relu    },
         {   32,   1, &activate_sigmoid, &backprop_sigmoid },
     }, l2_one_neuron_loss, l2_one_neuron_lossprob, HALF);
 
     Optimizer *opt  = create_optimizer(nn);
-
     Evaluator *evals[NTHREADS];
     Gradient  *grads[NTHREADS];
 
@@ -151,18 +149,40 @@ void randomize_network(Network *nn) {
 
 void save_network(Network *nn, char *fname) {
 
-    FILE *fout = fopen(fname, "w");
+    FILE *fout = fopen(fname, "wb");
 
-    for (int layer = 0; layer < nn->layers; layer++) {
+    #define quantize8(f)  (( uint8_t)(f * 64))
+    #define quantize16(f) ((uint16_t)(f * 64))
+    #define quantize32(f) ((uint32_t)(f * 64))
+
+    {
+        const int rows = nn->weights[0]->rows;
+        const int cols = nn->weights[0]->cols;
+
+        for (int i = 0; i < nn->biases[0]->length / 2; i++) {
+            uint16_t x = quantize16(nn->biases[0]->values[i]);
+            fwrite(&x, sizeof(uint16_t), 1, fout);
+        }
+
+        for (int i = 0; i < rows * cols; i++) {
+            uint16_t x = quantize16(nn->weights[0]->values[i]);
+            fwrite(&x, sizeof(uint16_t), 1, fout);
+        }
+    }
+
+    for (int layer = 1; layer < nn->layers; layer++) {
 
         const int rows = nn->weights[layer]->rows;
         const int cols = nn->weights[layer]->cols;
 
-        for (int col = 0; col < cols; col++) {
-            fprintf(fout, "\"%d ", rows);
-            for (int row = 0; row < rows; row++)
-                fprintf(fout, "%f ", nn->weights[layer]->values[row * cols + col]);
-            fprintf(fout, "%f\",\n", nn->biases[layer]->values[col]);
+        for (int i = 0; i < nn->biases[layer]->length; i++) {
+            uint32_t x = quantize32(nn->biases[layer]->values[i]);
+            fwrite(&x, sizeof(uint32_t), 1, fout);
+        }
+
+        for (int i = 0; i < rows * cols; i++) {
+            uint8_t x = quantize8(nn->weights[layer]->values[i]);
+            fwrite(&x, sizeof(uint8_t), 1, fout);
         }
     }
 

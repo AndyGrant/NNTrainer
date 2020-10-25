@@ -76,7 +76,7 @@ float accumulate_grad_bias(Gradient **grads, int layer, int idx);
 #define MAX_INDICIES 30
 #define MAX_INPUTS 40960
 
-#define NSAMPLES (1024*32*32)
+#define NSAMPLES (1024*32)
 #define DATAFILE "nnue.d8"
 
 typedef struct Sample {

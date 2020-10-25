@@ -78,9 +78,10 @@ void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const fl
 
 void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output, int type) {
 
-    set_vector(output, bias->values);
-
     if (type == NORMAL) {
+
+        set_vector(output, bias->values);
+
         for (int i = 0; i < sample->length; i++)
             for (int j = 0; j < matrix->cols; j++)
                 output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
@@ -89,6 +90,11 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
     else if (type == HALF) {
 
         int seg1_head = 0, seg2_head = matrix->cols;
+
+        for (int i = 0; i < bias->length / 2; i++) {
+            output->values[seg1_head + i] = bias->values[i];
+            output->values[seg2_head + i] = bias->values[i];
+        }
 
         for (int i = 0; i < sample->length; i++) {
 
@@ -163,10 +169,11 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
 
 void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz) {
 
-    nn->backprops[0](dlossdz, eval->unactivated[0]);
-    add_array_to_vector(grad->biases[0], dlossdz);
-
     if (nn->type == NORMAL) {
+
+        nn->backprops[0](dlossdz, eval->unactivated[0]);
+        add_array_to_vector(grad->biases[0], dlossdz);
+
         for (int i = 0; i < sample->length; i++)
             for (int j = 0; j < grad->weights[0]->cols; j++)
                 grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += dlossdz[j];
@@ -175,6 +182,10 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
     else if (nn->type == HALF) {
 
         int seg1_head = 0, seg2_head = grad->weights[0]->cols;
+
+        nn->backprops[0](dlossdz, eval->unactivated[0]);
+        for (int i = 0; i < grad->biases[0]->length / 2; i++)
+            grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
 
         for (int i = 0; i < sample->length; i++) {
 
