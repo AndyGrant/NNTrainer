@@ -33,7 +33,7 @@ Batch *create_batches(Sample *samples, int nsamples, int batch_size) {
         (float)(sizeof(Batch) * nsamples / batch_size) / (1024 * 1024));
     fflush(stdout);
 
-    #pragma omp parallel for schedule(static) num_threads(16) shared(NTHREADS)
+    #pragma omp parallel for schedule(static) num_threads(NTHREADS) shared(completed)
     for (int i = 0; i < nsamples / batch_size; i++) {
         create_batch(&batches[i], &samples[i * batch_size], batch_size);
         printf("\rCreated %d of %d Batch Lists", ++completed, nsamples / batch_size);
