@@ -38,18 +38,20 @@ static int relative_square(int colour, int sq) {
 
 void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx2) {
 
-    int stmk  = sample->turn == WHITE ? sample->wking
-              : relative_square(BLACK, sample->bking);
+    int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
+    int nstmk = sample->turn == WHITE ? sample->bking : sample->wking;
 
-    int nstmk = sample->turn == WHITE ? sample->bking
-              : relative_square(BLACK, sample->wking);
+    int sksq  = relative_square( sample->turn,  stmk);
+    int nsksq = relative_square(!sample->turn, nstmk);
 
-    int relsq = relative_square(sample->turn, encoded % 64);
+    int srelsq  = relative_square( sample->turn, encoded % 64);
+    int nsrelsq = relative_square(!sample->turn, encoded % 64);
+
     int pcenc = (encoded - (encoded % 64)) / 64;
     int piece = pcenc % 5, color = pcenc / 5;
 
-    *idx1 = (64 * 10 * stmk ) + (64 * (5 * (color == sample->turn) + piece)) + relsq;
-    *idx2 = (64 * 10 * nstmk) + (64 * (5 * (color != sample->turn) + piece)) + relsq;
+    *idx1 = (64 * 10 * sksq ) + (64 * (5 * (color == sample->turn) + piece)) + srelsq;
+    *idx2 = (64 * 10 * nsksq) + (64 * (5 * (color != sample->turn) + piece)) + nsrelsq;
 }
 
 
