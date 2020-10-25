@@ -29,8 +29,7 @@ Batch *create_batches(Sample *samples, int nsamples, int batch_size) {
     int completed = 0;
     Batch *batches = malloc(sizeof(Batch) * nsamples / batch_size);
 
-    printf("Allocated %.2fMB for Batch Optimization\n",
-        (float)(sizeof(Batch) * nsamples / batch_size) / (1024 * 1024));
+    printf("Performing Batch Optimizaion (Batch = %d)\n", batch_size);
     fflush(stdout);
 
     #pragma omp parallel for schedule(static) num_threads(NTHREADS) shared(completed)
@@ -45,8 +44,8 @@ Batch *create_batches(Sample *samples, int nsamples, int batch_size) {
         saved += batches[i].inputs / (float) MAX_INPUTS;
     saved = 100.0 - (saved * 100.0 / (nsamples / batch_size));
 
-    printf("Finished Creating Batch Lists\n");
-    printf("Average savings of %.2f%%\n\n", saved);
+    printf("\nFinished Creating Batch Lists");
+    printf("\nAverage savings of %.2f%%\n\n", saved);
     fflush(stdout);
 
     return batches;
