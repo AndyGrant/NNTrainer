@@ -42,8 +42,8 @@ int main() {
     Batch  *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
 
     Network *nn = create_network(4, (Layer[]) {
-        {40960, 512, &activate_relu,    &backprop_relu    },
-        {  512,  32, &activate_relu,    &backprop_relu    },
+        {40960, 128, &activate_relu,    &backprop_relu    },
+        {  128,  32, &activate_relu,    &backprop_relu    },
         {   32,  32, &activate_relu,    &backprop_relu    },
         {   32,   1, &activate_sigmoid, &backprop_sigmoid },
     }, l2_one_neuron_loss, l2_one_neuron_lossprob, HALF);
@@ -151,26 +151,18 @@ void save_network(Network *nn, char *fname) {
 
     FILE *fout = fopen(fname, "wb");
 
-    #define clamp8(f)  ((f <   -128) ?   -128 : (f >   127) ?   127 : f)
-    #define clamp16(f) ((f < -32768) ? -32768 : (f > 32767) ? 32767 : f)
-    #define clamp32(f) (f)
-
-    #define quantize8(f)  (( uint8_t)( int8_t)( clamp8(f * 64)))
-    #define quantize16(f) ((uint16_t)(int16_t)(clamp16(f * 64)))
-    #define quantize32(f) ((uint32_t)(int32_t)(clamp32(f * 64)))
-
     {
         const int rows = nn->weights[0]->rows;
         const int cols = nn->weights[0]->cols;
 
         for (int i = 0; i < nn->biases[0]->length / 2; i++) {
-            uint16_t x = quantize16(nn->biases[0]->values[i]);
-            fwrite(&x, sizeof(uint16_t), 1, fout);
+            float x = nn->biases[0]->values[i];
+            fwrite(&x, sizeof(float), 1, fout);
         }
 
         for (int i = 0; i < rows * cols; i++) {
-            uint16_t x = quantize16(nn->weights[0]->values[i]);
-            fwrite(&x, sizeof(uint16_t), 1, fout);
+            float x = nn->weights[0]->values[i];
+            fwrite(&x, sizeof(float), 1, fout);
         }
     }
 
@@ -180,13 +172,13 @@ void save_network(Network *nn, char *fname) {
         const int cols = nn->weights[layer]->cols;
 
         for (int i = 0; i < nn->biases[layer]->length; i++) {
-            uint32_t x = quantize32(nn->biases[layer]->values[i]);
-            fwrite(&x, sizeof(uint32_t), 1, fout);
+            float x = nn->biases[layer]->values[i];
+            fwrite(&x, sizeof(float), 1, fout);
         }
 
         for (int i = 0; i < rows * cols; i++) {
-            uint8_t x = quantize8(nn->weights[layer]->values[i]);
-            fwrite(&x, sizeof(uint8_t), 1, fout);
+            float x = nn->weights[layer]->values[i];
+            fwrite(&x, sizeof(float), 1, fout);
         }
     }
 
