@@ -18,6 +18,9 @@
 
 #pragma once
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "types.h"
 
 typedef struct Matrix {
@@ -25,6 +28,17 @@ typedef struct Matrix {
     float ALIGN64 *values;
 } Matrix;
 
-Matrix *create_matrix(int rows, int cols);
-void delete_matrix(Matrix *matrix);
-void zero_matrix(Matrix *matrix);
+static inline Matrix *create_matrix(int rows, int cols) {
+    Matrix *matrix = align_malloc(sizeof(Matrix));
+    *matrix = (Matrix) { rows, cols, align_malloc(rows * cols * sizeof(float)) };
+    memset(matrix->values, 0, sizeof(float) * matrix->rows * matrix->cols);
+    return matrix;
+}
+
+static inline void delete_matrix(Matrix *matrix) {
+    align_free(matrix->values); align_free(matrix);
+}
+
+static inline void zero_matrix(Matrix *matrix) {
+    memset(matrix->values, 0, sizeof(float) * matrix->rows * matrix->cols);
+}
