@@ -22,7 +22,7 @@
 
 typedef struct Vector {
     int length;
-    float *values;
+    float ALIGN64 *values;
 } Vector;
 
 Vector *create_vector(int length);

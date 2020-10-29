@@ -11,14 +11,17 @@
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 
-  GNU General Public License for more details.
   You should have received a copy of the GNU General Public License
+  GNU General Public License for more details.
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
 
-enum { NORMAL, HALF };
+#include <stdalign.h>
+#include <stdlib.h>
+
+enum { NORMAL, HALFKP };
 enum { WHITE, BLACK };
 
 typedef struct Batch     Batch;
@@ -32,6 +35,25 @@ typedef struct Sample    Sample;
 typedef struct Vector    Vector;
 
 typedef void  (*Activation) (Vector*, const Vector*);
-typedef void  (*BackProp)   (float *dlossdz, const Vector *vector);
-typedef float (*Loss)       (const Sample*, const Vector *outputs);
-typedef void  (*LossProp)   (const Sample*, const Vector *outputs, float *dlossdz);
+typedef void  (*BackProp)   (float *dlossdz, const Vector*);
+typedef float (*Loss)       (const Sample*, const Vector*);
+typedef void  (*LossProp)   (const Sample*, const Vector*, float *);
+
+#define ALIGN64 alignas(64)
+
+static inline void* align_malloc(size_t size) {
+#ifdef _WIN32
+    return _mm_malloc(size, 64);
+#else
+    void *mem;
+    return posix_memalign(&mem, alignment, size) ? NULL : mem;
+#endif
+}
+
+static inline void align_free(void *ptr) {
+#ifdef _WIN32
+    _mm_free(ptr);
+#else
+    free(ptr);
+#endif
+}

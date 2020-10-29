@@ -46,6 +46,7 @@ Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop,
 void delete_network(Network *nn);
 void randomize_network(Network *nn);
 void save_network(Network *nn, char *fname);
+void load_network(Network *nn, char *fname);
 
 typedef struct Evaluator {
     Vector **unactivated;
@@ -76,7 +77,7 @@ float accumulate_grad_bias(Gradient **grads, int layer, int idx);
 #define MAX_INDICIES 30
 #define MAX_INPUTS 40960
 
-#define NSAMPLES (1024*32)
+#define NSAMPLES (1024*32*16)
 #define DATAFILE "nnue.d8"
 
 typedef struct Sample {
@@ -93,7 +94,7 @@ void load_sample(FILE *fin, Sample *sample);
 #define BETA_2 0.999
 
 #define LEARNRATE 0.001
-#define BATCHSIZE 32768
+#define BATCHSIZE 1024
 
 typedef struct Optimizer {
     Gradient *momentum;
@@ -103,6 +104,6 @@ typedef struct Optimizer {
 Optimizer *create_optimizer(Network *nn);
 void delete_optimizer(Optimizer *opt);
 
-void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch, float lrate, int batch_size);
+void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch);
 
 /**************************************************************************************************************/

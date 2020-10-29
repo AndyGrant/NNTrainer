@@ -22,7 +22,7 @@
 
 typedef struct Matrix {
     int rows, cols;
-    float *values;
+    float ALIGN64 *values;
 } Matrix;
 
 Matrix *create_matrix(int rows, int cols);

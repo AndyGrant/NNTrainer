@@ -31,6 +31,8 @@
 #include "trainer.h"
 #include "vector.h"
 
+#define USE_AVX2 1
+
 int NTHREADS;
 
 int main() {
@@ -43,10 +45,10 @@ int main() {
 
     Network *nn = create_network(4, (Layer[]) {
         {40960, 128, &activate_relu,    &backprop_relu    },
-        {  128,  32, &activate_relu,    &backprop_relu    },
+        {  256,  32, &activate_relu,    &backprop_relu    },
         {   32,  32, &activate_relu,    &backprop_relu    },
         {   32,   1, &activate_sigmoid, &backprop_sigmoid },
-    }, l2_one_neuron_loss, l2_one_neuron_lossprob, HALF);
+    }, l2_one_neuron_loss, l2_one_neuron_lossprob, HALFKP);
 
     Optimizer *opt  = create_optimizer(nn);
     Evaluator *evals[NTHREADS];
@@ -74,7 +76,7 @@ int main() {
                 loss += nn->loss(&samples[i], evals[tidx]->activated[nn->layers-1]);
             }
 
-            update_network(opt, nn, grads, &batches[batch], LEARNRATE, BATCHSIZE);
+            update_network(opt, nn, grads, &batches[batch]);
         }
 
         double elapsed = (get_time_point() - start) / 1000.0;
@@ -105,11 +107,7 @@ Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop,
     nn->backprops   = malloc(sizeof(BackProp  ) * length);
 
     for (int i = 0; i < length; i++) {
-
-        int weight_outs = !i && type == HALF
-                        ? layers[i].outputs / 2 : layers[i].outputs;
-
-        nn->weights[i]     = create_matrix(layers[i].inputs, weight_outs);
+        nn->weights[i]     = create_matrix(layers[i].inputs, layers[i].outputs);
         nn->biases[i]      = create_vector(layers[i].outputs);
         nn->activations[i] = layers[i].activation;
         nn->backprops[i]   = layers[i].backprop;
@@ -151,39 +149,32 @@ void save_network(Network *nn, char *fname) {
 
     FILE *fout = fopen(fname, "wb");
 
-    if (nn->type == HALF) {
-
-        const int rows = nn->weights[0]->rows;
-        const int cols = nn->weights[0]->cols;
-
-        for (int i = 0; i < nn->biases[0]->length / 2; i++) {
-            float x = nn->biases[0]->values[i];
-            fwrite(&x, sizeof(float), 1, fout);
-        }
-
-        for (int i = 0; i < rows * cols; i++) {
-            float x = nn->weights[0]->values[i];
-            fwrite(&x, sizeof(float), 1, fout);
-        }
-    }
-
-    for (int layer = nn->type == HALF; layer < nn->layers; layer++) {
+    for (int layer = 0; layer < nn->layers; layer++) {
 
         const int rows = nn->weights[layer]->rows;
         const int cols = nn->weights[layer]->cols;
 
-        for (int i = 0; i < nn->biases[layer]->length; i++) {
-            float x = nn->biases[layer]->values[i];
-            fwrite(&x, sizeof(float), 1, fout);
-        }
-
-        for (int i = 0; i < rows * cols; i++) {
-            float x = nn->weights[layer]->values[i];
-            fwrite(&x, sizeof(float), 1, fout);
-        }
+        fwrite(nn->biases[layer]->values, sizeof(float), cols, fout);
+        fwrite(nn->weights[layer]->values, sizeof(float), rows * cols, fout);
     }
 
     fclose(fout);
+}
+
+void load_network(Network *nn, char *fname) {
+
+    FILE *fin = fopen(fname, "rb");
+
+    for (int layer = 0; layer < nn->layers; layer++) {
+
+        const int rows = nn->weights[layer]->rows;
+        const int cols = nn->weights[layer]->cols;
+
+        fread(nn->biases[layer]->values, sizeof(float), cols, fin);
+        fread(nn->weights[layer]->values, sizeof(float), rows * cols, fin);
+    }
+
+    fclose(fin);
 }
 
 /**************************************************************************************************************/
@@ -195,7 +186,12 @@ Evaluator *create_evaluator(Network *nn) {
     eval->unactivated = malloc(sizeof(Vector*) * eval->layers);
     eval->activated   = malloc(sizeof(Vector*) * eval->layers);
 
-    for (int i = 0; i < eval->layers; i++) {
+    if (nn->type == HALFKP) {
+        eval->unactivated[0] = create_vector(2 * nn->biases[0]->length);
+        eval->activated[0]   = create_vector(2 * nn->biases[0]->length);
+    }
+
+    for (int i = (nn->type == HALFKP); i < eval->layers; i++) {
         eval->unactivated[i] = create_vector(nn->biases[i]->length);
         eval->activated[i]   = create_vector(nn->biases[i]->length);
     }
@@ -337,27 +333,34 @@ float accumulate_grad_bias(Gradient **grads, int layer, int idx) {
     return total;
 }
 
-void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch, float lrate, int batch_size) {
+void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch) {
 
     #pragma omp parallel for schedule(static) num_threads(NTHREADS)
     for (int idx = 0; idx < batch->inputs; idx++) {
 
         int start = batch->indices[idx] * nn->weights[0]->cols;
 
-        for (int i = start; i < start + nn->weights[0]->cols; i++) {
+        if (USE_AVX2 && nn->weights[0]->cols % 8 == 0) {
+            for (int i = start; i < start + nn->weights[0]->cols; i += 8)
+                avx2_update_weights(opt, nn, grads, 0, i);
+        }
 
-            const float true_grad = accumulate_grad_weight(grads, 0, i) / batch_size;
+        else {
 
-            opt->momentum->weights[0]->values[i]
-                = (BETA_1 * opt->momentum->weights[0]->values[i])
-                + (1 - BETA_1) * true_grad;
+            for (int i = start; i < start + nn->weights[0]->cols; i++) {
+                const float true_grad = accumulate_grad_weight(grads, 0, i) / BATCHSIZE;
 
-            opt->velocity->weights[0]->values[i]
-                = (BETA_2 * opt->velocity->weights[0]->values[i])
-                + (1 - BETA_2) * pow(true_grad, 2.0);
+                opt->momentum->weights[0]->values[i]
+                    = (BETA_1 * opt->momentum->weights[0]->values[i])
+                    + (1 - BETA_1) * true_grad;
 
-            nn->weights[0]->values[i] -= lrate * opt->momentum->weights[0]->values[i]
-                                       * (1.0 / (1e-8 + sqrt(opt->velocity->weights[0]->values[i])));
+                opt->velocity->weights[0]->values[i]
+                    = (BETA_2 * opt->velocity->weights[0]->values[i])
+                    + (1 - BETA_2) * pow(true_grad, 2.0);
+
+                nn->weights[0]->values[i] -= LEARNRATE * opt->momentum->weights[0]->values[i]
+                                           * (1.0 / (1e-8 + sqrt(opt->velocity->weights[0]->values[i])));
+            }
         }
     }
 
@@ -369,7 +372,7 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch,
         #pragma omp parallel for schedule(static) num_threads(NTHREADS)
         for (int i = 0; i < rows * cols; i++) {
 
-            const float true_grad = accumulate_grad_weight(grads, layer, i) / batch_size;
+            const float true_grad = accumulate_grad_weight(grads, layer, i) / BATCHSIZE;
 
             opt->momentum->weights[layer]->values[i]
                 = (BETA_1 * opt->momentum->weights[layer]->values[i])
@@ -379,7 +382,7 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch,
                 = (BETA_2 * opt->velocity->weights[layer]->values[i])
                 + (1 - BETA_2) * powf(true_grad, 2.0);
 
-            nn->weights[layer]->values[i] -= lrate * opt->momentum->weights[layer]->values[i]
+            nn->weights[layer]->values[i] -= LEARNRATE * opt->momentum->weights[layer]->values[i]
                                            * (1.0 / (1e-8 + sqrtf(opt->velocity->weights[layer]->values[i])));
         }
     }
@@ -389,7 +392,7 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch,
         #pragma omp parallel for schedule(static) num_threads(NTHREADS)
         for (int i = 0; i < nn->biases[layer]->length; i++) {
 
-            const float true_grad = accumulate_grad_bias(grads, layer, i) / batch_size;
+            const float true_grad = accumulate_grad_bias(grads, layer, i) / BATCHSIZE;
 
             opt->momentum->biases[layer]->values[i]
                 = (BETA_1 * opt->momentum->biases[layer]->values[i])
@@ -399,7 +402,7 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch,
                 = (BETA_2 * opt->velocity->biases[layer]->values[i])
                 + (1 - BETA_2) * powf(true_grad, 2.0);
 
-            nn->biases[layer]->values[i] -= lrate * opt->momentum->biases[layer]->values[i]
+            nn->biases[layer]->values[i] -= LEARNRATE * opt->momentum->biases[layer]->values[i]
                                           * (1.0 / (1e-8 + sqrtf(opt->velocity->biases[layer]->values[i])));
         }
     }

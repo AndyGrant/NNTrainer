@@ -22,13 +22,14 @@
 #include "vector.h"
 
 Vector *create_vector(int length) {
-    Vector *vector = malloc(sizeof(Vector));
-    *vector = (Vector) { length, calloc(length, sizeof(float)) };
+    Vector *vector = align_malloc(sizeof(Vector));
+    *vector = (Vector) { length, align_malloc(length * sizeof(float)) };
+    zero_vector(vector);
     return vector;
 }
 
 void delete_vector(Vector *vector) {
-    free(vector->values); free(vector);
+    align_free(vector->values); align_free(vector);
 }
 
 void set_vector(Vector *vector, float *values) {

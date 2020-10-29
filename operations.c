@@ -17,10 +17,9 @@
 */
 
 #include "matrix.h"
-#include "vector.h"
 #include "operations.h"
-
 #include "trainer.h"
+#include "vector.h"
 
 static int file_of(int sq) { return sq % 8; }
 
@@ -87,11 +86,11 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
                 output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
     }
 
-    else if (type == HALF) {
+    else if (type == HALFKP) {
 
         int seg1_head = 0, seg2_head = matrix->cols;
 
-        for (int i = 0; i < bias->length / 2; i++) {
+        for (int i = 0; i < bias->length; i++) {
             output->values[seg1_head + i] = bias->values[i];
             output->values[seg2_head + i] = bias->values[i];
         }
@@ -179,12 +178,12 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
                 grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += dlossdz[j];
     }
 
-    else if (nn->type == HALF) {
+    else if (nn->type == HALFKP) {
 
         int seg1_head = 0, seg2_head = grad->weights[0]->cols;
 
         nn->backprops[0](dlossdz, eval->unactivated[0]);
-        for (int i = 0; i < grad->biases[0]->length / 2; i++)
+        for (int i = 0; i < grad->biases[0]->length; i++)
             grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
 
         for (int i = 0; i < sample->length; i++) {

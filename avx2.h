@@ -11,27 +11,11 @@
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 
-  GNU General Public License for more details.
   You should have received a copy of the GNU General Public License
+  GNU General Public License for more details.
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>
-#include <string.h>
+#include "types.h"
 
-#include "matrix.h"
-
-Matrix *create_matrix(int rows, int cols) {
-    Matrix *matrix = align_malloc(sizeof(Matrix));
-    *matrix = (Matrix) { rows, cols, align_malloc(rows * cols * sizeof(float)) };
-    zero_matrix(matrix);
-    return matrix;
-}
-
-void delete_matrix(Matrix *matrix) {
-    align_free(matrix->values); align_free(matrix);
-}
-
-void zero_matrix(Matrix *matrix) {
-    memset(matrix->values, 0, sizeof(float) * matrix->rows * matrix->cols);
-}
+void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index);
