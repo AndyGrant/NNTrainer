@@ -41,7 +41,7 @@ typedef struct Network {
     int type;
 } Network;
 
-Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop, int type);
+Network *create_network(int length, const Layer *layers, Loss loss, LossProp lossprop, int type);
 
 void delete_network(Network *nn);
 void randomize_network(Network *nn);
@@ -50,21 +50,12 @@ void load_network(Network *nn, char *fname);
 
 /**************************************************************************************************************/
 
-#define MAX_INDICIES 30
-#define MAX_INPUTS 40960
-
-#define NSAMPLES (1024*32*16)
-#define DATAFILE "nnue.d8"
-
-#define LEARNRATE 0.001
-#define BATCHSIZE 1024
-
 typedef struct Sample {
     int eval, turn, wking, bking, length;
-    uint16_t indices[MAX_INDICIES];
+    uint16_t indices[32];
 } Sample;
 
-Sample *load_samples(char *fname, int length);
+Sample *load_samples(const char *fname, int length);
 void load_sample(FILE *fin, Sample *sample);
 
 void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch);

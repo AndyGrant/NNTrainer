@@ -13,14 +13,15 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "batch.h"
-#include "types.h"
-#include "trainer.h"
+#include "config.h"
 #include "operations.h"
+#include "trainer.h"
+#include "types.h"
 
 extern int NTHREADS;
 

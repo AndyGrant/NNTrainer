@@ -25,6 +25,7 @@
 
 #include "activate.h"
 #include "batch.h"
+#include "config.h"
 #include "evaluator.h"
 #include "gradient.h"
 #include "matrix.h"
@@ -46,12 +47,9 @@ int main() {
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
     Batch  *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
 
-    Network *nn = create_network(4, (Layer[]) {
-        {40960, 128, &activate_relu,    &backprop_relu    },
-        {  256,  32, &activate_relu,    &backprop_relu    },
-        {   32,  32, &activate_relu,    &backprop_relu    },
-        {   32,   1, &activate_sigmoid, &backprop_sigmoid },
-    }, l2_one_neuron_loss, l2_one_neuron_lossprob, HALFKP);
+    const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
+
+    Network *nn = create_network(length, ARCHITECTURE, LOSS_FUNC, LOSSPROP_FUNC, NN_TYPE);
 
     Optimizer *opt  = create_optimizer(nn);
     Evaluator *evals[NTHREADS];
@@ -95,7 +93,7 @@ int main() {
 
 /**************************************************************************************************************/
 
-Network *create_network(int length, Layer *layers, Loss loss, LossProp lossprop, int type) {
+Network *create_network(int length, const Layer *layers, Loss loss, LossProp lossprop, int type) {
 
     Network *nn = malloc(sizeof(Network));
 
@@ -182,7 +180,7 @@ void load_network(Network *nn, char *fname) {
 
 /**************************************************************************************************************/
 
-Sample *load_samples(char *fname, int length) {
+Sample *load_samples(const char *fname, int length) {
 
     Sample *samples = malloc(sizeof(Sample) * length);
     printf("Allocated %.2fMB for Samples\n",
