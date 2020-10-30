@@ -40,6 +40,7 @@ typedef float (*Loss)       (const Sample*, const Vector*);
 typedef void  (*LossProp)   (const Sample*, const Vector*, float *);
 
 #define ALIGN64 alignas(64)
+#define INLINE static inline
 
 static inline void* align_malloc(size_t size) {
 #ifdef _WIN32

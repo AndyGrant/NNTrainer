@@ -16,6 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "gradient.h"
 #include "matrix.h"
 #include "operations.h"
 #include "trainer.h"

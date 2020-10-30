@@ -28,21 +28,21 @@ typedef struct Vector {
     float ALIGN64 *values;
 } Vector;
 
-static inline Vector *create_vector(int length) {
+INLINE Vector *create_vector(int length) {
     Vector *vector = align_malloc(sizeof(Vector));
     *vector = (Vector) { length, align_malloc(length * sizeof(float)) };
     memset(vector->values, 0, sizeof(float) * vector->length);
     return vector;
 }
 
-static inline void delete_vector(Vector *vector) {
+INLINE void delete_vector(Vector *vector) {
     align_free(vector->values); align_free(vector);
 }
 
-static inline void set_vector(Vector *vector, float *values) {
+INLINE void set_vector(Vector *vector, float *values) {
     memcpy(vector->values, values, sizeof(float) * vector->length);
 }
 
-static inline void zero_vector(Vector *vector) {
+INLINE void zero_vector(Vector *vector) {
     memset(vector->values, 0, sizeof(float) * vector->length);
 }

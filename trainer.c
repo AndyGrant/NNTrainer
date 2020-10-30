@@ -25,6 +25,7 @@
 
 #include "activate.h"
 #include "batch.h"
+#include "gradient.h"
 #include "matrix.h"
 #include "operations.h"
 #include "timing.h"
@@ -209,45 +210,6 @@ void delete_evaluator(Evaluator *eval) {
     free(eval->unactivated);
     free(eval->activated);
     free(eval);
-}
-
-
-/**************************************************************************************************************/
-
-Gradient *create_gradient(Network *nn) {
-
-    Gradient *grad = malloc(sizeof(Gradient));
-
-    grad->layers  = nn->layers;
-    grad->weights = malloc(sizeof(Matrix*) * grad->layers);
-    grad->biases  = malloc(sizeof(Vector*) * grad->layers);
-
-    for (int i = 0; i < grad->layers; i++) {
-        grad->weights[i] = create_matrix(nn->weights[i]->rows, nn->weights[i]->cols);
-        grad->biases[i]  = create_vector(nn->biases[i]->length);
-    }
-
-    return grad;
-}
-
-void delete_gradient(Gradient *grad) {
-
-    for (int i = 0; i < grad->layers; i++) {
-        delete_matrix(grad->weights[i]);
-        delete_vector(grad->biases[i]);
-    }
-
-    free(grad->weights);
-    free(grad->biases );
-    free(grad);
-}
-
-void zero_gradient(Gradient *grad) {
-
-    for (int i = 0; i < grad->layers; i++) {
-        zero_matrix(grad->weights[i]);
-        zero_vector(grad->biases[i]);
-    }
 }
 
 

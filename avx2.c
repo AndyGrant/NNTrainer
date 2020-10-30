@@ -19,6 +19,7 @@
 #include <immintrin.h>
 
 #include "avx2.h"
+#include "gradient.h"
 #include "matrix.h"
 #include "trainer.h"
 #include "types.h"

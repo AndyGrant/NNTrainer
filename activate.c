@@ -18,9 +18,10 @@
 
 #include <math.h>
 
-#include "vector.h"
 #include "activate.h"
+#include "gradient.h"
 #include "trainer.h"
+#include "vector.h"
 
 float relu(float x) {
     return fmaxf(0.0, x);
