@@ -25,6 +25,7 @@
 
 #include "activate.h"
 #include "batch.h"
+#include "evaluator.h"
 #include "gradient.h"
 #include "matrix.h"
 #include "operations.h"
@@ -177,41 +178,6 @@ void load_network(Network *nn, char *fname) {
 
     fclose(fin);
 }
-
-/**************************************************************************************************************/
-
-Evaluator *create_evaluator(Network *nn) {
-
-    Evaluator *eval   = malloc(sizeof(Evaluator));
-    eval->layers      = nn->layers;
-    eval->unactivated = malloc(sizeof(Vector*) * eval->layers);
-    eval->activated   = malloc(sizeof(Vector*) * eval->layers);
-
-    if (nn->type == HALFKP) {
-        eval->unactivated[0] = create_vector(2 * nn->biases[0]->length);
-        eval->activated[0]   = create_vector(2 * nn->biases[0]->length);
-    }
-
-    for (int i = (nn->type == HALFKP); i < eval->layers; i++) {
-        eval->unactivated[i] = create_vector(nn->biases[i]->length);
-        eval->activated[i]   = create_vector(nn->biases[i]->length);
-    }
-
-    return eval;
-}
-
-void delete_evaluator(Evaluator *eval) {
-
-    for (int i = 0; i < eval->layers; i++) {
-        delete_vector(eval->unactivated[i]);
-        delete_vector(eval->activated[i]);
-    }
-
-    free(eval->unactivated);
-    free(eval->activated);
-    free(eval);
-}
-
 
 /**************************************************************************************************************/
 

@@ -48,15 +48,6 @@ void randomize_network(Network *nn);
 void save_network(Network *nn, char *fname);
 void load_network(Network *nn, char *fname);
 
-typedef struct Evaluator {
-    Vector **unactivated;
-    Vector **activated;
-    int layers;
-} Evaluator;
-
-Evaluator *create_evaluator(Network *nn);
-void delete_evaluator(Evaluator *eval);
-
 /**************************************************************************************************************/
 
 #define MAX_INDICIES 30
