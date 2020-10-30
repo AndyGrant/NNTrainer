@@ -56,6 +56,9 @@ void load_network(Network *nn, char *fname);
 #define NSAMPLES (1024*32*16)
 #define DATAFILE "nnue.d8"
 
+#define LEARNRATE 0.001
+#define BATCHSIZE 1024
+
 typedef struct Sample {
     int eval, turn, wking, bking, length;
     uint16_t indices[MAX_INDICIES];
@@ -63,22 +66,6 @@ typedef struct Sample {
 
 Sample *load_samples(char *fname, int length);
 void load_sample(FILE *fin, Sample *sample);
-
-/**************************************************************************************************************/
-
-#define BETA_1 0.9
-#define BETA_2 0.999
-
-#define LEARNRATE 0.001
-#define BATCHSIZE 1024
-
-typedef struct Optimizer {
-    Gradient *momentum;
-    Gradient *velocity;
-} Optimizer;
-
-Optimizer *create_optimizer(Network *nn);
-void delete_optimizer(Optimizer *opt);
 
 void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch);
 

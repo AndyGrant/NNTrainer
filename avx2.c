@@ -21,6 +21,7 @@
 #include "avx2.h"
 #include "gradient.h"
 #include "matrix.h"
+#include "optimizer.h"
 #include "trainer.h"
 #include "types.h"
 #include "vector.h"

@@ -29,6 +29,7 @@
 #include "gradient.h"
 #include "matrix.h"
 #include "operations.h"
+#include "optimizer.h"
 #include "timing.h"
 #include "trainer.h"
 #include "vector.h"
@@ -227,19 +228,6 @@ void load_sample(FILE *fin, Sample *sample) {
 }
 
 /**************************************************************************************************************/
-
-Optimizer *create_optimizer(Network *nn) {
-    Optimizer *opt = malloc(sizeof(Optimizer));
-    opt->momentum = create_gradient(nn);
-    opt->velocity = create_gradient(nn);
-    return opt;
-}
-
-void delete_optimizer(Optimizer *opt) {
-    free(opt->momentum);
-    free(opt->velocity);
-    free(opt);
-}
 
 float accumulate_grad_weight(Gradient **grads, int layer, int idx) {
 
