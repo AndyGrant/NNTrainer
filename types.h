@@ -47,7 +47,7 @@ static inline void* align_malloc(size_t size) {
     return _mm_malloc(size, 64);
 #else
     void *mem;
-    return posix_memalign(&mem, alignment, size) ? NULL : mem;
+    return posix_memalign(&mem, 64, size) ? NULL : mem;
 #endif
 }
 
