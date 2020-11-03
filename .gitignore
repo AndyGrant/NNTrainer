@@ -1,7 +1,8 @@
 *
 !*.c
 !*.h
-!*.py
+!generate/
+!generate/*.py
 !Makefile
 !.gitignore
 !README.md
