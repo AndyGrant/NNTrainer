@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 #include "activate.h"
 #include "trainer.h"
 #include "types.h"
@@ -27,9 +29,10 @@ static const int   NSAMPLES   = 1024 * 32;
 
 static const int   BATCHSIZE  = 1024;
 static const float LEARNRATE  = 0.001;
-
 static const char  DATAFILE[] = "nnue.d8";
-static const char  WEIGHTS[]  = "";
+
+static const bool  USE_WEIGHTS = false;
+static const char  NNWEIGHTS[] = "";
 
 static const float SIGM_COEFF = 2.27 / 400.00;
 

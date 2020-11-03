@@ -47,7 +47,7 @@ int main() {
 
     const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
     Network *nn = create_network(length, ARCHITECTURE, LOSS_FUNC, LOSSPROP_FUNC, NN_TYPE);
-    if (strcmp(WEIGHTS, "")) load_network(nn, WEIGHTS);
+    if (USE_WEIGHTS) load_network(nn, NNWEIGHTS);
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
     Batch  *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
