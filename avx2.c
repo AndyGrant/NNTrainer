@@ -40,11 +40,13 @@ void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int laye
     const __m256 batchsize    = _mm256_set1_ps(BATCHSIZE);
     const __m256 learnrate    = _mm256_set1_ps(LEARNRATE);
 
-    /// Sum up all of the
+    const __m256 zero         = _mm256_setzero_ps();
+
+    /// Sum up all of the per-thread Gradients
 
     __m256 partial = _mm256_load_ps(&grads[0]->weights[layer]->values[index]);
-    for (int j = 1; j < NTHREADS; j++)
-        partial = _mm256_add_ps(partial, _mm256_load_ps(&grads[j]->weights[layer]->values[index]));
+    for (int i = 1; i < NTHREADS; i++)
+        partial = _mm256_add_ps(partial, _mm256_load_ps(&grads[i]->weights[layer]->values[index]));
 
     const __m256 accumulated = _mm256_div_ps(partial, batchsize);
     const __m256 accumulated2 = _mm256_mul_ps(accumulated, accumulated);
@@ -80,4 +82,9 @@ void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int laye
     const __m256 updated = _mm256_sub_ps(_mm256_load_ps(&nn->weights[layer]->values[index]), deltas);
 
     _mm256_store_ps(&nn->weights[layer]->values[index], updated);
+
+    /// Clear the Gradient's for the next batch
+
+    for (int i = 0; i < NTHREADS; i++)
+        _mm256_store_ps(&grads[i]->weights[layer]->values[index], zero);
 }

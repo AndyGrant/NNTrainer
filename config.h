@@ -23,7 +23,7 @@
 #include "types.h"
 
 static const int   MAX_INPUTS = 40960;
-static const int   NSAMPLES   = 1024 * 32 * 16;
+static const int   NSAMPLES   = 1024 * 1024;
 
 static const int   BATCHSIZE  = 1024;
 static const float LEARNRATE  = 0.001;

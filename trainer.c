@@ -262,6 +262,7 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
         else {
 
             for (int i = start; i < start + nn->weights[0]->cols; i++) {
+
                 const float true_grad = accumulate_grad_weight(grads, 0, i) / BATCHSIZE;
 
                 opt->momentum->weights[0]->values[i]
@@ -276,6 +277,12 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
                                            * (1.0 / (1e-8 + sqrt(opt->velocity->weights[0]->values[i])));
             }
         }
+    }
+
+    if (!USE_AVX2 || nn->weights[0]->cols % 8 != 0) {
+        #pragma omp parallel for schedule(static) num_threads(NTHREADS)
+        for (int i = 0; i < NTHREADS; i++)
+            zero_matrix(grads[i]->weights[0]);
     }
 
     for (int layer = 1; layer < nn->layers; layer++) {
@@ -299,6 +306,10 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
             nn->weights[layer]->values[i] -= LEARNRATE * opt->momentum->weights[layer]->values[i]
                                            * (1.0 / (1e-8 + sqrtf(opt->velocity->weights[layer]->values[i])));
         }
+
+        #pragma omp parallel for schedule(static) num_threads(NTHREADS)
+        for (int i = 0; i < NTHREADS; i++)
+            zero_matrix(grads[i]->weights[layer]);
     }
 
     for (int layer = 0; layer < nn->layers; layer++) {
@@ -319,11 +330,11 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
             nn->biases[layer]->values[i] -= LEARNRATE * opt->momentum->biases[layer]->values[i]
                                           * (1.0 / (1e-8 + sqrtf(opt->velocity->biases[layer]->values[i])));
         }
-    }
 
-    #pragma omp parallel for schedule(static) num_threads(NTHREADS)
-    for (int i = 0; i < NTHREADS; i++)
-        zero_gradient(grads[i]);
+        #pragma omp parallel for schedule(static) num_threads(NTHREADS)
+        for (int i = 0; i < NTHREADS; i++)
+            zero_vector(grads[i]->biases[layer]);
+    }
 }
 
 /**************************************************************************************************************/
