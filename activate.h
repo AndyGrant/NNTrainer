@@ -20,19 +20,11 @@
 
 #include "types.h"
 
-#define SIGM_COEFF (2.27 / 400.00)
-
 float relu(float x);
 float relu_prime(float x);
 
 float sigmoid(float x);
 float sigmoid_prime(float x);
-
-float null_activation(float x);
-float null_activation_prime(float x);
-
-float loss_function(float x, float y);
-float loss_prime(float x, float y);
 
 /// Activation functions. These functions are all matching
 /// >> typedef void (*Activation) (Vector*, const Vector*);

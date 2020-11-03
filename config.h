@@ -29,11 +29,13 @@ static const int   BATCHSIZE  = 1024;
 static const float LEARNRATE  = 0.001;
 static const char  DATAFILE[] = "nnue.d8";
 
+static const float SIGM_COEFF = 2.27 / 400.00;
+
 static const Layer ARCHITECTURE[] = {
-    {40960, 128, &activate_relu,    &backprop_relu    },
-    {  256,  32, &activate_relu,    &backprop_relu    },
-    {   32,  32, &activate_relu,    &backprop_relu    },
-    {   32,   1, &activate_sigmoid, &backprop_sigmoid },
+    {40960, 128, &activate_relu, &backprop_relu },
+    {  256,  32, &activate_relu, &backprop_relu },
+    {   32,  32, &activate_relu, &backprop_relu },
+    {   32,   1, &activate_null, &backprop_null },
 };
 
 static const Loss     LOSS_FUNC     = l2_one_neuron_loss;

@@ -213,7 +213,7 @@ void load_sample(FILE *fin, Sample *sample) {
     if (fgets(line, 1024, fin) == NULL)
         exit(EXIT_FAILURE);
 
-    sample->eval  = atoi(strtok(line, " "));
+    sample->label = atof(strtok(line, " "));
     sample->turn  = atoi(strtok(NULL, " "));
     sample->wking = atoi(strtok(NULL, " "));
     sample->bking = atoi(strtok(NULL, " "));
@@ -222,7 +222,7 @@ void load_sample(FILE *fin, Sample *sample) {
     while ((ptr = strtok(NULL, " ")) != NULL)
         sample->indices[sample->length++] = atoi(ptr);
 
-    if (sample->turn) sample->eval = -sample->eval;
+    if (sample->turn) sample->label = -sample->label;
 }
 
 /**************************************************************************************************************/

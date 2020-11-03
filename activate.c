@@ -19,6 +19,7 @@
 #include <math.h>
 
 #include "activate.h"
+#include "config.h"
 #include "gradient.h"
 #include "trainer.h"
 #include "vector.h"
@@ -40,14 +41,6 @@ float sigmoid_prime(float x) {
     return SIGM_COEFF * sigm * (1.0 - sigm);
 }
 
-float null_activation(float x) {
-    return x;
-}
-
-float null_activation_prime(float x) {
-    (void) x; return 1.0;
-}
-
 /// Activation functions. These functions are all matching
 /// >> typedef void (*Activation) (Vector*, const Vector*);
 
@@ -63,7 +56,7 @@ void activate_sigmoid(Vector *input, const Vector *output) {
 
 void activate_null(Vector *input, const Vector *output) {
     for (int i = 0; i < input->length; i++)
-        output->values[i] = null_activation(input->values[i]);
+        output->values[i] = input->values[i];
 }
 
 /// BackProp functions. These functions are all matching
@@ -80,8 +73,7 @@ void backprop_sigmoid(float *dlossdz, const Vector *vector) {
 }
 
 void backprop_null(float *dlossdz, const Vector *vector) {
-    for (int i = 0; i < vector->length; i++)
-        dlossdz[i] *= null_activation_prime(vector->values[i]);
+    (void) dlossdz; (void) vector;
 }
 
 /// Loss and LossProp functions. These functions are all matching
@@ -89,11 +81,11 @@ void backprop_null(float *dlossdz, const Vector *vector) {
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
 float l2_one_neuron_loss(const Sample *sample, const Vector *outputs) {
-    return powf(sigmoid(sample->eval) - outputs->values[0], 2.0);
+    return powf(sample->label - outputs->values[0], 2.0);
 }
 
 void l2_one_neuron_lossprob(const Sample *sample, const Vector *outputs, float *dlossdz) {
-    *dlossdz = -2.0 * (sigmoid(sample->eval) - outputs->values[0]);
+    *dlossdz = -2.0 * (sample->label - outputs->values[0]);
 }
 
 // float l2_loss_phased(const Sample *sample, const Vector *outputs) {

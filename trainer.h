@@ -51,7 +51,8 @@ void load_network(Network *nn, char *fname);
 /**************************************************************************************************************/
 
 typedef struct Sample {
-    int eval, turn, wking, bking, length;
+    float label;
+    int8_t turn, wking, bking, length;
     uint16_t indices[32];
 } Sample;
 
