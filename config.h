@@ -23,11 +23,13 @@
 #include "types.h"
 
 static const int   MAX_INPUTS = 40960;
-static const int   NSAMPLES   = 1024 * 1024;
+static const int   NSAMPLES   = 1024 * 32;
 
 static const int   BATCHSIZE  = 1024;
 static const float LEARNRATE  = 0.001;
+
 static const char  DATAFILE[] = "nnue.d8";
+static const char  WEIGHTS[]  = "";
 
 static const float SIGM_COEFF = 2.27 / 400.00;
 

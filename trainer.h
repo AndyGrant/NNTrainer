@@ -45,8 +45,8 @@ Network *create_network(int length, const Layer *layers, Loss loss, LossProp los
 
 void delete_network(Network *nn);
 void randomize_network(Network *nn);
-void save_network(Network *nn, char *fname);
-void load_network(Network *nn, char *fname);
+void save_network(Network *nn, const char *fname);
+void load_network(Network *nn, const char *fname);
 
 /**************************************************************************************************************/
 

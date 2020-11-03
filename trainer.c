@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "avx2.h"
 #include "activate.h"
 #include "batch.h"
 #include "config.h"
@@ -44,12 +45,12 @@ int main() {
     NTHREADS = omp_get_max_threads();
     printf("Found %d Threads to Train on\n\n", NTHREADS);
 
+    const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
+    Network *nn = create_network(length, ARCHITECTURE, LOSS_FUNC, LOSSPROP_FUNC, NN_TYPE);
+    if (strcmp(WEIGHTS, "")) load_network(nn, WEIGHTS);
+
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
     Batch  *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
-
-    const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
-
-    Network *nn = create_network(length, ARCHITECTURE, LOSS_FUNC, LOSSPROP_FUNC, NN_TYPE);
 
     Optimizer *opt  = create_optimizer(nn);
     Evaluator *evals[NTHREADS];
@@ -146,7 +147,7 @@ void randomize_network(Network *nn) {
     #undef random
 }
 
-void save_network(Network *nn, char *fname) {
+void save_network(Network *nn, const char *fname) {
 
     FILE *fout = fopen(fname, "wb");
 
@@ -162,7 +163,7 @@ void save_network(Network *nn, char *fname) {
     fclose(fout);
 }
 
-void load_network(Network *nn, char *fname) {
+void load_network(Network *nn, const char *fname) {
 
     FILE *fin = fopen(fname, "rb");
 
@@ -171,9 +172,12 @@ void load_network(Network *nn, char *fname) {
         const int rows = nn->weights[layer]->rows;
         const int cols = nn->weights[layer]->cols;
 
-        fread(nn->biases[layer]->values, sizeof(float), cols, fin);
-        fread(nn->weights[layer]->values, sizeof(float), rows * cols, fin);
+        if (   fread(nn->biases[layer]->values, sizeof(float), cols, fin) != (size_t) cols
+            || fread(nn->weights[layer]->values, sizeof(float), rows * cols, fin) != (size_t) rows * cols)
+            exit(EXIT_FAILURE);
     }
+
+    printf("Loaded Weights from %s\n", fname); fflush(stdout);
 
     fclose(fin);
 }
