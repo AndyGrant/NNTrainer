@@ -2,14 +2,11 @@ import platform, time, sys, os
 from subprocess import Popen, PIPE, call
 from multiprocessing import Process, Queue, active_children
 
-DEPTH   = 8
-THREADS = 16
-BATCH   = 16384
-ENGINE  = 'Ethereal.exe'
-SOURCE  = 'C:\\Users\\14438\\Desktop\\Datasets\\NeuralBoth.nnbook'
-
-IS_WINDOWS = platform.system() == 'Windows'
-IS_LINUX   = platform.system() != 'Windows'
+DEPTH   = 12
+THREADS = 32
+BATCH   = 8192
+ENGINE  = './Ethereal'
+SOURCE  = 'NeuralBoth.nnbook'
 
 def parse_source_fens(fname):
     with open(fname) as fin:
@@ -70,8 +67,9 @@ def thread_process_data(inqueue, outqueue):
 
 def enqueue_elements(generator, elements, queue):
     for ii in range(elements):
-        queue.put(next(generator))
-
+        try: queue.put(next(generator))
+        except StopIteration: return ii
+    return elements
 
 if __name__ == '__main__':
 
@@ -86,10 +84,11 @@ if __name__ == '__main__':
 
     try:
         while True:
-            enqueue_elements(generator, BATCH, inqueue)
-            for ii in range(BATCH):
+            placed = enqueue_elements(generator, BATCH, inqueue)
+            for ii in range(placed):
                 out = outqueue.get()
                 if out != '': print (out)
+            if placed != BATCH: break
     except:
         for worker in workers:
             worker.join()
