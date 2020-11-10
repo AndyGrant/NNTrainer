@@ -21,7 +21,6 @@
 #include <stdbool.h>
 
 #include "activate.h"
-#include "trainer.h"
 #include "types.h"
 
 static const int   MAX_INPUTS = 40960;
@@ -34,7 +33,7 @@ static const char  DATAFILE[] = "nnue.d8";
 static const bool  USE_WEIGHTS = false;
 static const char  NNWEIGHTS[] = "";
 
-static const float SIGM_COEFF = 2.27 / 400.00;
+static const float SIGM_COEFF = 2.42 / 400.00;
 
 static const Layer ARCHITECTURE[] = {
     {40960, 128, &activate_relu, &backprop_relu },

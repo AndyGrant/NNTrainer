@@ -211,6 +211,17 @@ void load_sample(FILE *fin, Sample *sample) {
     if (fgets(line, 1024, fin) == NULL)
         exit(EXIT_FAILURE);
 
+
+#if NN_TYPE == NORMAL
+
+    sample->label = atof(strtok(line, " "));
+
+    sample->length = 0;
+    while ((ptr = strtok(NULL, " ")) != NULL)
+        sample->indices[sample->length++] = atoi(ptr);
+
+#elif NN_TYPE == HALFKP
+
     sample->label = atof(strtok(line, " "));
     sample->turn  = atoi(strtok(NULL, " "));
     sample->wking = atoi(strtok(NULL, " "));
@@ -221,6 +232,9 @@ void load_sample(FILE *fin, Sample *sample) {
         sample->indices[sample->length++] = atoi(ptr);
 
     if (sample->turn) sample->label = -sample->label;
+
+#endif
+
 }
 
 /**************************************************************************************************************/

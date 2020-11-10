@@ -24,6 +24,8 @@
 #include "trainer.h"
 #include "vector.h"
 
+#if NN_TYPE == HALFKP
+
 static int file_of(int sq) { return sq % 8; }
 
 static int rank_of(int sq) { return sq / 8; }
@@ -56,6 +58,7 @@ void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx
     *idx2 = (64 * 10 * nsksq) + (64 * (5 * (color != sample->turn) + piece)) + nsrelsq;
 }
 
+#endif
 
 void add_array_to_vector(Vector *vector, const float *addends) {
     for (int i = 0; i < vector->length; i++)

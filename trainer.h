@@ -23,12 +23,7 @@
 #include <stdlib.h>
 
 #include "types.h"
-
-typedef struct Layer {
-    int inputs, outputs;
-    Activation activation;
-    BackProp backprop;
-} Layer;
+#include "config.h"
 
 typedef struct Network {
     int layers;
@@ -47,11 +42,23 @@ void load_network(Network *nn, const char *fname);
 
 /**************************************************************************************************************/
 
+#if NN_TYPE == NORMAL
+
+typedef struct Sample {
+    float label;
+    int8_t length;
+    uint16_t indices[32];
+} Sample;
+
+#elif NN_TYPE == HALFKP
+
 typedef struct Sample {
     float label;
     int8_t turn, wking, bking, length;
     uint16_t indices[32];
 } Sample;
+
+#endif
 
 Sample *load_samples(const char *fname, int length);
 void load_sample(FILE *fin, Sample *sample);

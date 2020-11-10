@@ -20,7 +20,12 @@
 
 #include "utils.h"
 
+#define NORMAL 0 // Normal Networks with a single Input set
+#define HALFKP 1 // Networks with 2xHalfs via Shogi-King-Piece encoding
+
 enum { WHITE, BLACK };
+
+/// Forward declaration of all structs and types for simplifying includes
 
 typedef struct Batch     Batch;
 typedef struct Evaluator Evaluator;
@@ -37,5 +42,10 @@ typedef void  (*BackProp)   (float *dlossdz, const Vector*);
 typedef float (*Loss)       (const Sample*, const Vector*);
 typedef void  (*LossProp)   (const Sample*, const Vector*, float *);
 
-#define NORMAL 0
-#define HALFKP 1
+/// Architecture Design, defined here to avoid recursive includes
+
+typedef struct Layer {
+    int inputs, outputs;
+    Activation activation;
+    BackProp backprop;
+} Layer;
