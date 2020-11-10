@@ -32,7 +32,6 @@
 #include "matrix.h"
 #include "operations.h"
 #include "optimizer.h"
-#include "timing.h"
 #include "trainer.h"
 #include "vector.h"
 

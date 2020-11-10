@@ -11,21 +11,42 @@
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 
-  GNU General Public License for more details.
   You should have received a copy of the GNU General Public License
+  GNU General Public License for more details.
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
 
+#include <stdlib.h>
+
 #if defined(_WIN32) || defined(_WIN64)
+
     #include <windows.h>
-    static inline double get_time_point() {
+
+    INLINE void* align_malloc(size_t size) {
+        return _mm_malloc(size, 64);
+    }
+
+    INLINE void align_free(void *ptr) {
+        _mm_free(ptr);
+    }
+
+    INLINE double get_time_point() {
         return (double)(GetTickCount());
     }
+
 #else
-    #include <sys/time.h>
-    static inline double get_time_point() {
+
+    INLINE void* align_malloc(size_t size) {
+        void *mem; return posix_memalign(&mem, 64, size) ? NULL : mem;
+    }
+
+    INLINE void align_free(void *ptr) {
+        free(ptr);
+    }
+
+    INLINE double get_time_point() {
 
         struct timeval tv;
         double secsInMilli, usecsInMilli;
@@ -36,4 +57,5 @@
 
         return secsInMilli + usecsInMilli;
     }
+
 #endif

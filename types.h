@@ -19,7 +19,6 @@
 #pragma once
 
 #include <stdalign.h>
-#include <stdlib.h>
 
 enum { NORMAL, HALFKP };
 enum { WHITE, BLACK };
@@ -42,19 +41,4 @@ typedef void  (*LossProp)   (const Sample*, const Vector*, float *);
 #define ALIGN64 alignas(64)
 #define INLINE static inline
 
-static inline void* align_malloc(size_t size) {
-#ifdef _WIN32
-    return _mm_malloc(size, 64);
-#else
-    void *mem;
-    return posix_memalign(&mem, 64, size) ? NULL : mem;
-#endif
-}
-
-static inline void align_free(void *ptr) {
-#ifdef _WIN32
-    _mm_free(ptr);
-#else
-    free(ptr);
-#endif
-}
+#include "utils.h"
