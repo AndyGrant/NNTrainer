@@ -43,6 +43,8 @@ static const Layer ARCHITECTURE[] = {
     {   32,   1, &activate_null, &backprop_null },
 };
 
-static const Loss     LOSS_FUNC     = l2_one_neuron_loss;
-static const LossProp LOSSPROP_FUNC = l2_one_neuron_lossprob;
-static const int      NN_TYPE       = HALFKP;
+// Choose a Loss, LossProp, and NN Architecture
+
+#define LOSS_FUNC     l2_one_neuron_loss
+#define LOSSPROP_FUNC l2_one_neuron_lossprob
+#define NN_TYPE       HALFKP

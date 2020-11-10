@@ -24,6 +24,3 @@ typedef struct Batch {
 } Batch;
 
 Batch *create_batches(Sample *samples, int nsamples, int batch_size);
-void create_batch(Batch *batch, Sample *start, int batch_size);
-void append_indices(uint16_t *array, int *length, Sample *sample);
-void append_index(uint16_t *array, int *length, uint16_t index);

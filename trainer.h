@@ -36,12 +36,9 @@ typedef struct Network {
     Vector **biases;
     Activation *activations;
     BackProp *backprops;
-    Loss loss;
-    LossProp lossprop;
-    int type;
 } Network;
 
-Network *create_network(int length, const Layer *layers, Loss loss, LossProp lossprop, int type);
+Network *create_network(int length, const Layer *layers);
 
 void delete_network(Network *nn);
 void randomize_network(Network *nn);

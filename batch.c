@@ -25,59 +25,7 @@
 
 extern int NTHREADS;
 
-Batch *create_batches(Sample *samples, int nsamples, int batch_size) {
-
-    int completed = 0;
-    Batch *batches = malloc(sizeof(Batch) * nsamples / batch_size);
-
-    printf("Performing Batch Optimizaion (Batch = %d)\n", batch_size);
-    fflush(stdout);
-
-    #pragma omp parallel for schedule(static) num_threads(NTHREADS) shared(completed)
-    for (int i = 0; i < nsamples / batch_size; i++) {
-        create_batch(&batches[i], &samples[i * batch_size], batch_size);
-        printf("\rCreated %d of %d Batch Lists", ++completed, nsamples / batch_size);
-        fflush(stdout);
-    }
-
-    float saved = 0.0;
-    for (int i = 0; i < nsamples / batch_size; i++)
-        saved += batches[i].inputs / (float) MAX_INPUTS;
-    saved = 100.0 - (saved * 100.0 / (nsamples / batch_size));
-
-    printf("\nFinished Creating Batch Lists");
-    printf("\nAverage savings of %.2f%%\n\n", saved);
-    fflush(stdout);
-
-    return batches;
-}
-
-void create_batch(Batch *batch, Sample *start, int batch_size) {
-
-    batch->start  = start;
-    batch->inputs = 0;
-
-    uint16_t array[MAX_INPUTS];
-    for (int i = 0; i < batch_size; i++)
-        append_indices(array, &batch->inputs, &start[i]);
-
-    batch->indices = malloc(sizeof(uint16_t) * batch->inputs);
-    memcpy(batch->indices, array, sizeof(uint16_t) * batch->inputs);
-}
-
-void append_indices(uint16_t *array, int *length, Sample *sample) {
-
-    for (int i = 0; i < sample->length; i++) {
-
-        int seg1_idx, seg2_idx;
-        compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
-
-        append_index(array, length, seg1_idx);
-        append_index(array, length, seg2_idx);
-    }
-}
-
-void append_index(uint16_t *array, int *length, uint16_t index) {
+static void append_index(uint16_t *array, int *length, uint16_t index) {
 
     if (*length == 0 || index > array[*length-1]) {
         array[(*length)++] = index;
@@ -109,4 +57,65 @@ void append_index(uint16_t *array, int *length, uint16_t index) {
             return;
         }
     }
+}
+
+static void append_indices(uint16_t *array, int *length, Sample *sample) {
+
+    for (int i = 0; i < sample->length; i++) {
+
+    #if NN_TYPE == NORMAL
+
+        append_index(array, length, sample->indices[i]);
+
+    #elif NN_TYPE == HALFKP
+
+        int seg1_idx, seg2_idx;
+        compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
+
+        append_index(array, length, seg1_idx);
+        append_index(array, length, seg2_idx);
+
+    #endif
+
+    }
+}
+
+static void create_batch(Batch *batch, Sample *start, int batch_size) {
+
+    batch->start  = start;
+    batch->inputs = 0;
+
+    uint16_t array[MAX_INPUTS];
+    for (int i = 0; i < batch_size; i++)
+        append_indices(array, &batch->inputs, &start[i]);
+
+    batch->indices = malloc(sizeof(uint16_t) * batch->inputs);
+    memcpy(batch->indices, array, sizeof(uint16_t) * batch->inputs);
+}
+
+Batch *create_batches(Sample *samples, int nsamples, int batch_size) {
+
+    int completed = 0;
+    Batch *batches = malloc(sizeof(Batch) * nsamples / batch_size);
+
+    printf("Performing Batch Optimizaion (Batch = %d)\n", batch_size);
+    fflush(stdout);
+
+    #pragma omp parallel for schedule(static) num_threads(NTHREADS) shared(completed)
+    for (int i = 0; i < nsamples / batch_size; i++) {
+        create_batch(&batches[i], &samples[i * batch_size], batch_size);
+        printf("\rCreated %d of %d Batch Lists", ++completed, nsamples / batch_size);
+        fflush(stdout);
+    }
+
+    float saved = 0.0;
+    for (int i = 0; i < nsamples / batch_size; i++)
+        saved += batches[i].inputs / (float) MAX_INPUTS;
+    saved = 100.0 - (saved * 100.0 / (nsamples / batch_size));
+
+    printf("\nFinished Creating Batch Lists");
+    printf("\nAverage savings of %.2f%%\n\n", saved);
+    fflush(stdout);
+
+    return batches;
 }

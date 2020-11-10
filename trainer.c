@@ -45,7 +45,7 @@ int main() {
     printf("Found %d Threads to Train on\n\n", NTHREADS);
 
     const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
-    Network *nn = create_network(length, ARCHITECTURE, LOSS_FUNC, LOSSPROP_FUNC, NN_TYPE);
+    Network *nn = create_network(length, ARCHITECTURE);
     if (USE_WEIGHTS) load_network(nn, NNWEIGHTS);
 
     Sample *samples = load_samples(DATAFILE, NSAMPLES);
@@ -74,7 +74,7 @@ int main() {
                 const int tidx = omp_get_thread_num();
                 evaluate_network(nn, evals[tidx], &samples[i]);
                 build_backprop_grad(nn, evals[tidx], grads[tidx], &samples[i]);
-                loss += nn->loss(&samples[i], evals[tidx]->activated[nn->layers-1]);
+                loss += LOSS_FUNC(&samples[i], evals[tidx]->activated[nn->layers-1]);
             }
 
             update_network(opt, nn, grads, &batches[batch]);
@@ -93,19 +93,14 @@ int main() {
 
 /**************************************************************************************************************/
 
-Network *create_network(int length, const Layer *layers, Loss loss, LossProp lossprop, int type) {
+Network *create_network(int length, const Layer *layers) {
 
-    Network *nn = malloc(sizeof(Network));
-
-    nn->layers   = length;
-    nn->loss     = loss;
-    nn->lossprop = lossprop;
-    nn->type     = type;
-
+    Network *nn     = malloc(sizeof(Network));
     nn->weights     = malloc(sizeof(Matrix*   ) * length);
     nn->biases      = malloc(sizeof(Vector*   ) * length);
     nn->activations = malloc(sizeof(Activation) * length);
     nn->backprops   = malloc(sizeof(BackProp  ) * length);
+    nn->layers      = length;
 
     for (int i = 0; i < length; i++) {
         nn->weights[i]     = create_matrix(layers[i].inputs, layers[i].outputs);

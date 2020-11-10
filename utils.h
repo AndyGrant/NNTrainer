@@ -19,8 +19,14 @@
 #pragma once
 
 #include <stdlib.h>
+#include <stdalign.h>
+
+#define ALIGN64 alignas(64)
+#define INLINE static inline
 
 #if defined(_WIN32) || defined(_WIN64)
+
+    /// Windows Support
 
     #include <windows.h>
 
@@ -37,6 +43,8 @@
     }
 
 #else
+
+    /// Otherwise, assume POSIX Support
 
     INLINE void* align_malloc(size_t size) {
         void *mem; return posix_memalign(&mem, 64, size) ? NULL : mem;

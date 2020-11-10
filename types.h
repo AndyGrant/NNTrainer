@@ -18,9 +18,8 @@
 
 #pragma once
 
-#include <stdalign.h>
+#include "utils.h"
 
-enum { NORMAL, HALFKP };
 enum { WHITE, BLACK };
 
 typedef struct Batch     Batch;
@@ -38,7 +37,5 @@ typedef void  (*BackProp)   (float *dlossdz, const Vector*);
 typedef float (*Loss)       (const Sample*, const Vector*);
 typedef void  (*LossProp)   (const Sample*, const Vector*, float *);
 
-#define ALIGN64 alignas(64)
-#define INLINE static inline
-
-#include "utils.h"
+#define NORMAL 0
+#define HALFKP 1

@@ -16,6 +16,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "evaluator.h"
 #include "gradient.h"
 #include "matrix.h"
@@ -77,38 +78,39 @@ void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const fl
 }
 
 
-void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output, int type) {
+void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output) {
 
-    if (type == NORMAL) {
+#if NN_TYPE == NORMAL
 
-        set_vector(output, bias->values);
+    set_vector(output, bias->values);
 
-        for (int i = 0; i < sample->length; i++)
-            for (int j = 0; j < matrix->cols; j++)
-                output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
+    for (int i = 0; i < sample->length; i++)
+        for (int j = 0; j < matrix->cols; j++)
+            output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
+
+#elif NN_TYPE == HALFKP
+
+    int seg1_head = 0, seg2_head = matrix->cols;
+
+    for (int i = 0; i < bias->length; i++) {
+        output->values[seg1_head + i] = bias->values[i];
+        output->values[seg2_head + i] = bias->values[i];
     }
 
-    else if (type == HALFKP) {
+    for (int i = 0; i < sample->length; i++) {
 
-        int seg1_head = 0, seg2_head = matrix->cols;
+        int seg1_idx, seg2_idx;
+        compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
 
-        for (int i = 0; i < bias->length; i++) {
-            output->values[seg1_head + i] = bias->values[i];
-            output->values[seg2_head + i] = bias->values[i];
-        }
+        for (int j = 0; j < matrix->cols; j++)
+            output->values[seg1_head + j] += matrix->values[seg1_idx * matrix->cols + j];
 
-        for (int i = 0; i < sample->length; i++) {
-
-            int seg1_idx, seg2_idx;
-            compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
-
-            for (int j = 0; j < matrix->cols; j++)
-                output->values[seg1_head + j] += matrix->values[seg1_idx * matrix->cols + j];
-
-            for (int j = 0; j < matrix->cols; j++)
-                output->values[seg2_head + j] += matrix->values[seg2_idx * matrix->cols + j];
-        }
+        for (int j = 0; j < matrix->cols; j++)
+            output->values[seg2_head + j] += matrix->values[seg2_idx * matrix->cols + j];
     }
+
+#endif
+
 }
 
 void affine_transform(const Vector *vector, const Matrix *matrix, const Vector *bias, Vector *output) {
@@ -126,7 +128,7 @@ void evaluate_network(const Network *nn, Evaluator *eval, const Sample *sample) 
         Vector *outputs   = eval->unactivated[0];
         Vector *activated = eval->activated[0];
 
-        input_transform(sample, nn->weights[0], nn->biases[0], outputs, nn->type);
+        input_transform(sample, nn->weights[0], nn->biases[0], outputs);
         nn->activations[0](outputs, activated);
     }
 
@@ -147,7 +149,7 @@ void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *s
     const Vector *outputs = eval->activated[nn->layers-1];
     float dlossdz[outputs->length];
 
-    nn->lossprop(sample, outputs, dlossdz);
+    LOSSPROP_FUNC(sample, outputs, dlossdz);
     apply_backprop(nn, eval, grad, sample, dlossdz, nn->layers-1);
 }
 
@@ -170,34 +172,35 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
 
 void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz) {
 
-    if (nn->type == NORMAL) {
+#if NN_TYPE == NORMAL
 
-        nn->backprops[0](dlossdz, eval->unactivated[0]);
-        add_array_to_vector(grad->biases[0], dlossdz);
+    nn->backprops[0](dlossdz, eval->unactivated[0]);
+    add_array_to_vector(grad->biases[0], dlossdz);
 
-        for (int i = 0; i < sample->length; i++)
-            for (int j = 0; j < grad->weights[0]->cols; j++)
-                grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += dlossdz[j];
+    for (int i = 0; i < sample->length; i++)
+        for (int j = 0; j < grad->weights[0]->cols; j++)
+            grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += dlossdz[j];
+
+#elif NN_TYPE == HALFKP
+
+    int seg1_head = 0, seg2_head = grad->weights[0]->cols;
+
+    nn->backprops[0](dlossdz, eval->unactivated[0]);
+    for (int i = 0; i < grad->biases[0]->length; i++)
+        grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
+
+    for (int i = 0; i < sample->length; i++) {
+
+        int seg1_idx, seg2_idx;
+        compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
+
+        for (int j = 0; j < grad->weights[0]->cols; j++)
+            grad->weights[0]->values[seg1_idx * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
+
+        for (int j = 0; j < grad->weights[0]->cols; j++)
+            grad->weights[0]->values[seg2_idx * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
     }
 
-    else if (nn->type == HALFKP) {
+#endif
 
-        int seg1_head = 0, seg2_head = grad->weights[0]->cols;
-
-        nn->backprops[0](dlossdz, eval->unactivated[0]);
-        for (int i = 0; i < grad->biases[0]->length; i++)
-            grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
-
-        for (int i = 0; i < sample->length; i++) {
-
-            int seg1_idx, seg2_idx;
-            compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
-
-            for (int j = 0; j < grad->weights[0]->cols; j++)
-                grad->weights[0]->values[seg1_idx * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
-
-            for (int j = 0; j < grad->weights[0]->cols; j++)
-                grad->weights[0]->values[seg2_idx * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
-        }
-    }
 }
