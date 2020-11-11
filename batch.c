@@ -75,6 +75,16 @@ static void append_indices(uint16_t *array, int *length, Sample *sample) {
         append_index(array, length, seg1_idx);
         append_index(array, length, seg2_idx);
 
+    #elif NN_TYPE == RELATIVE
+
+        int i1, i2, i3, i4;
+        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4);
+
+        append_index(array, length, i1);
+        append_index(array, length, i2);
+        append_index(array, length, i3);
+        append_index(array, length, i4);
+
     #else
 
         #error No Architecture Detected

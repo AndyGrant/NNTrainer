@@ -220,7 +220,7 @@ void load_sample(FILE *fin, Sample *sample) {
     while ((ptr = strtok(NULL, " ")) != NULL)
         sample->indices[sample->length++] = atoi(ptr);
 
-#elif NN_TYPE == HALFKP
+#elif NN_TYPE == HALFKP || NN_TYPE == RELATIVE
 
     sample->label = atof(strtok(line, " "));
     sample->turn  = atoi(strtok(NULL, " "));

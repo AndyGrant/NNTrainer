@@ -20,9 +20,16 @@
 
 #include <stdint.h>
 
+#include "config.h"
 #include "types.h"
 
+#if NN_TYPE == HALFKP
 void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx2);
+#endif
+
+#if NN_TYPE == RELATIVE
+void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, int *i3, int *i4);
+#endif
 
 void add_array_to_vector(Vector *vector, const float *addends);
 void add_array_mul_vector_to_matrix(Matrix *matrix, const float *mulends, const Vector *vector);

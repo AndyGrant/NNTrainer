@@ -60,6 +60,49 @@ void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx
 
 #endif
 
+#if NN_TYPE == RELATIVE
+
+static int file_of(int sq) { return sq % 8; }
+
+static int rank_of(int sq) { return sq / 8; }
+
+static int square(int rank, int file) { return rank * 8 + file; }
+
+static int relative_rank_of(int colour, int sq) {
+    return colour == WHITE ? rank_of(sq) : 7 - rank_of(sq);
+}
+
+static int relative_square(int colour, int sq) {
+    return square(relative_rank_of(colour, sq), file_of(sq));
+}
+
+void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, int *i3, int *i4) {
+
+    int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
+    int nstmk = sample->turn == WHITE ? sample->bking : sample->wking;
+
+    int sksq  = relative_square( sample->turn,  stmk);
+    int nsksq = relative_square(!sample->turn, nstmk);
+
+    int srelsq  = relative_square( sample->turn, encoded % 64);
+    int nsrelsq = relative_square(!sample->turn, encoded % 64);
+
+    int pcenc = (encoded - (encoded % 64)) / 64;
+    int piece = pcenc % 5, color = pcenc / 5;
+
+    int saug  = 15 * (7 + rank_of( sksq) - rank_of( srelsq)) + (7 + file_of( sksq) - file_of( srelsq));
+    int nsaug = 15 * (7 + rank_of(nsksq) - rank_of(nsrelsq)) + (7 + file_of(nsksq) - file_of(nsrelsq));
+
+    *i1 = (64 * 10 * sksq ) + (64 * (5 * (color == sample->turn) + piece)) + srelsq;
+    *i2 = (64 * 10 * nsksq) + (64 * (5 * (color != sample->turn) + piece)) + nsrelsq;
+
+    *i3 = 40960 + (225 * (5 * (color == sample->turn) + piece)) + saug;
+    *i4 = 40960 + (225 * (5 * (color != sample->turn) + piece)) + nsaug;
+}
+
+#endif
+
+
 void add_array_to_vector(Vector *vector, const float *addends) {
     for (int i = 0; i < vector->length; i++)
         vector->values[i] += addends[i];
@@ -110,6 +153,29 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
 
         for (int j = 0; j < matrix->cols; j++)
             output->values[seg2_head + j] += matrix->values[seg2_idx * matrix->cols + j];
+    }
+
+#elif NN_TYPE == RELATIVE
+
+    int seg1_head = 0, seg2_head = matrix->cols;
+
+    for (int i = 0; i < bias->length; i++) {
+        output->values[seg1_head + i] = bias->values[i];
+        output->values[seg2_head + i] = bias->values[i];
+    }
+
+    for (int i = 0; i < sample->length; i++) {
+
+        int i1, i2, i3, i4;
+        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4);
+
+        for (int j = 0; j < matrix->cols; j++)
+            output->values[seg1_head + j] += matrix->values[i1 * matrix->cols + j]
+                                           + matrix->values[i3 * matrix->cols + j];
+
+        for (int j = 0; j < matrix->cols; j++)
+            output->values[seg2_head + j] += matrix->values[i2 * matrix->cols + j]
+                                           + matrix->values[i4 * matrix->cols + j];
     }
 
 #else
@@ -206,6 +272,27 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 
         for (int j = 0; j < grad->weights[0]->cols; j++)
             grad->weights[0]->values[seg2_idx * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+    }
+
+#elif NN_TYPE == RELATIVE
+
+    int seg1_head = 0, seg2_head = grad->weights[0]->cols;
+
+    nn->backprops[0](dlossdz, eval->unactivated[0]);
+    for (int i = 0; i < grad->biases[0]->length; i++)
+        grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
+
+    for (int i = 0; i < sample->length; i++) {
+
+        int i1, i2, i3, i4;
+        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4);
+
+        for (int j = 0; j < grad->weights[0]->cols; j++) {
+            grad->weights[0]->values[i1 * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
+            grad->weights[0]->values[i2 * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+            grad->weights[0]->values[i3 * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
+            grad->weights[0]->values[i4 * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+        }
     }
 
 #else

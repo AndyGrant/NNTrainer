@@ -23,8 +23,8 @@
 #include "activate.h"
 #include "types.h"
 
-static const int   MAX_INPUTS = 40960;
-static const int   NSAMPLES   = 1024 * 32;
+static const int   MAX_INPUTS = 43210;
+static const int   NSAMPLES   = 1024 * 1024;
 
 static const int   BATCHSIZE  = 1024;
 static const float LEARNRATE  = 0.001;
@@ -36,7 +36,7 @@ static const char  NNWEIGHTS[] = "";
 static const float SIGM_COEFF = 2.42 / 400.00;
 
 static const Layer ARCHITECTURE[] = {
-    {40960, 128, &activate_relu, &backprop_relu },
+    {43210, 128, &activate_relu, &backprop_relu },
     {  256,  32, &activate_relu, &backprop_relu },
     {   32,  32, &activate_relu, &backprop_relu },
     {   32,   1, &activate_null, &backprop_null },
@@ -46,4 +46,4 @@ static const Layer ARCHITECTURE[] = {
 
 #define LOSS_FUNC     l2_one_neuron_loss
 #define LOSSPROP_FUNC l2_one_neuron_lossprob
-#define NN_TYPE       HALFKP
+#define NN_TYPE       RELATIVE

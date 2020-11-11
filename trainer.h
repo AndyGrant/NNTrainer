@@ -50,7 +50,7 @@ typedef struct Sample {
     uint16_t indices[32];
 } Sample;
 
-#elif NN_TYPE == HALFKP
+#elif NN_TYPE == HALFKP || NN_TYPE == RELATIVE
 
 typedef struct Sample {
     float label;
