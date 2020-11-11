@@ -46,6 +46,8 @@
 
     /// Otherwise, assume POSIX Support
 
+    #include <sys/time.h>
+
     INLINE void* align_malloc(size_t size) {
         void *mem; return posix_memalign(&mem, 64, size) ? NULL : mem;
     }
