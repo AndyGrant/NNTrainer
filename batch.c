@@ -75,6 +75,10 @@ static void append_indices(uint16_t *array, int *length, Sample *sample) {
         append_index(array, length, seg1_idx);
         append_index(array, length, seg2_idx);
 
+    #else
+
+        #error No Architecture Detected
+
     #endif
 
     }

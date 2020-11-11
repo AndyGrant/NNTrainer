@@ -112,6 +112,10 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
             output->values[seg2_head + j] += matrix->values[seg2_idx * matrix->cols + j];
     }
 
+#else
+
+    #error No Architecture Detected
+
 #endif
 
 }
@@ -203,6 +207,10 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
         for (int j = 0; j < grad->weights[0]->cols; j++)
             grad->weights[0]->values[seg2_idx * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
     }
+
+#else
+
+    #error No Architecture Detected
 
 #endif
 

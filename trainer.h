@@ -58,6 +58,10 @@ typedef struct Sample {
     uint16_t indices[32];
 } Sample;
 
+#else
+
+    #error No Architecture Detected
+
 #endif
 
 Sample *load_samples(const char *fname, int length);

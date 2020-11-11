@@ -233,6 +233,10 @@ void load_sample(FILE *fin, Sample *sample) {
 
     if (sample->turn) sample->label = -sample->label;
 
+#else
+
+    #error No Architecture Detected
+
 #endif
 
 }

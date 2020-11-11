@@ -52,6 +52,10 @@ INLINE Evaluator *create_evaluator(Network *nn) {
         eval->activated[i]   = create_vector(nn->biases[i]->length);
     }
 
+#else
+
+    #error No Architecture Detected
+
 #endif
 
     return eval;
