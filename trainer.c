@@ -47,9 +47,15 @@ int main() {
     const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
     Network *nn = create_network(length, ARCHITECTURE);
     if (USE_WEIGHTS) load_network(nn, NNWEIGHTS);
+    else printf("Created Network with randomized Weights\n");
 
-    Sample *samples = load_samples(DATAFILE, NSAMPLES);
-    Batch  *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
+    printf("Loading Validation Dataset...\n");
+    Sample *validate = load_samples(VALIDFILE, NVALIDATE);
+
+    printf("Loading Training Dataset...\n");
+    Sample *samples  = load_samples(DATAFILE, NSAMPLES);
+
+    Batch *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
 
     Optimizer *opt  = create_optimizer(nn);
     Evaluator *evals[NTHREADS];
@@ -63,9 +69,10 @@ int main() {
 
     for (int epoch = 0; epoch < 25000; epoch++) {
 
-        float loss = 0.0;
-
+        float loss = 0.0, vloss = 0.0;
         double start = get_time_point();
+
+        /// Train by iterating over each of the Training Samples
 
         for (int batch = 0; batch < NSAMPLES / BATCHSIZE; batch++) {
 
@@ -82,7 +89,17 @@ int main() {
 
         double elapsed = (get_time_point() - start) / 1000.0;
 
-        printf("[%4d] [%0.3fs] Loss = %.9f\n", epoch, elapsed, loss / NSAMPLES);
+        /// Verify by iterating over each of the Validation Samples
+
+        #pragma omp parallel for schedule(static, NVALIDATE / NTHREADS) num_threads(NTHREADS) reduction(+:vloss)
+        for (int i = 0; i < NVALIDATE; i++) {
+            const int tidx = omp_get_thread_num();
+            evaluate_network(nn, evals[tidx], &validate[i]);
+            vloss += LOSS_FUNC(&validate[i], evals[tidx]->activated[nn->layers-1]);
+        }
+
+        printf("[%4d] [%0.3fs] [Training = %10.4f] [Validation = %10.4f]\n",
+            epoch, elapsed, loss / NSAMPLES, vloss / NVALIDATE);
         fflush(stdout);
 
         char fname[512];
@@ -171,7 +188,7 @@ void load_network(Network *nn, const char *fname) {
             exit(EXIT_FAILURE);
     }
 
-    printf("Loaded Weights from %s\n", fname); fflush(stdout);
+    printf("Created Network with Weights from %s\n", fname); fflush(stdout);
 
     fclose(fin);
 }
