@@ -4,7 +4,7 @@ import chess
 import chess.pgn
 import multiprocessing
 
-THREADS   = 1
+THREADS   = 16
 DATAFILE  = 'frcgames.pgn'
 BATCHSIZE = 8192
 
@@ -48,19 +48,15 @@ def process_data(inqueue, outqueue):
         if result.startswith('1/2') : result = '0.5'
         if result.startswith('0-1') : result = '0.0'
 
-        for fen, comment in zip(fens, comments):
+        for fen, comment in zip(fens[:-1], comments[:-1]):
 
-            # Don't process MATEs
             ev = comment.split('/')[0]
             if 'M' in ev.upper(): break
 
-            # Save <FEN> <Result> <Eval>
             ev = int(float(ev) * 100.0)
             samples.append('{} [{}] {}'.format(fen, result, ev))
 
         outqueue.put(samples)
-
-
 
 def enqueue_elements(generator, elements, queue):
     for ii in range(elements):
@@ -89,6 +85,12 @@ def build_book():
 
         if placed != BATCHSIZE:
             break
+
+    for ii in range(THREADS):
+        inqueue.put(None)
+
+    for worker in workers:
+        worker.join()
 
 if __name__ == '__main__':
     build_book()
