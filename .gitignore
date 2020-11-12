@@ -3,6 +3,7 @@
 !*.h
 !generate/
 !generate/*.py
+!generate/frcpositions.epd
 !Makefile
 !.gitignore
 !README.md
