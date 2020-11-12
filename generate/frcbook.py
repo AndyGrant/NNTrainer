@@ -53,12 +53,18 @@ with open('frcpositions.epd') as fin:
     FENS = [x.strip() for x in fin.readlines()]
 
 def random_position():
+
     pos = chess.Board(random.choice(FENS), chess960=True)
+
     for ii in range(RANDOMS):
         moves = list(pos.legal_moves)
         if not moves: return random_position()
         pos.push(random.choice(moves))
-    return pos.fen()
+
+    if pos.legal_moves:
+        return pos.fen()
+
+    return random_position()
 
 def thread_build_book(outqueue):
 
