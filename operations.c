@@ -100,6 +100,22 @@ void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, i
     *i4 = 40960 + (225 * (5 * (color != sample->turn) + piece)) + nsaug;
 }
 
+int nnue_to_relative(int encoded) {
+
+    /// Given a value [0, 40960], which encodes a (King Sq, Piece-Col, Piece Sq),
+    /// compute the relative index mapping of [0, 2250] which is the encoded form
+    /// of (Piece-Col, Rankwise-distance, Filewise-distance).
+
+    const int piecesq   = (encoded % 64);       // Enc = (1 * Piece Square  )
+    const int piececol  = (encoded % 640) / 64; //     + (64 * Piece-Col    )
+    const int kingsq    = (encoded / 640);      //     + (640 * King Sq     )
+
+    const int relative  = 15 * (7 + rank_of(kingsq) - rank_of(piecesq))
+                             + (7 + file_of(kingsq) - file_of(piecesq));
+
+    return (225 * piececol) + relative;
+}
+
 #endif
 
 

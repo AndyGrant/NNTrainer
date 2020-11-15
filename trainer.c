@@ -39,7 +39,54 @@
 
 int NTHREADS;
 
+#if NN_TYPE == RELATIVE
+
+void export_network(Network *nn) {
+
+    FILE *fout = fopen("exported.nn", "wb");
+
+    {
+        const int rows = 40960;
+        const int cols = nn->weights[0]->cols;
+        float *weights = malloc(sizeof(float) * (rows * cols));
+
+        fwrite(nn->biases[0]->values, sizeof(float), cols, fout);
+
+        for (int i = 0; i < rows; i++) {
+
+            const int augmented = rows + nnue_to_relative(i);
+
+            for (int j = 0; j < cols; j++)
+                weights[i * cols + j] = nn->weights[0]->values[i * cols + j]
+                                      + nn->weights[0]->values[augmented * cols + j];
+        }
+
+        fwrite(weights, sizeof(float), rows * cols, fout);
+        free(weights);
+    }
+
+    for (int layer = 1; layer < nn->layers; layer++) {
+
+        const int rows = nn->weights[layer]->rows;
+        const int cols = nn->weights[layer]->cols;
+
+        fwrite(nn->biases[layer]->values, sizeof(float), cols, fout);
+        fwrite(nn->weights[layer]->values, sizeof(float), rows * cols, fout);
+    }
+
+    fclose(fout);
+}
+
+#endif
+
 int main() {
+
+    // const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
+    // Network *nn = create_network(length, ARCHITECTURE);\
+    // load_network(nn, "../Testing/nnue.nn");
+    // export_network(nn);
+    // return 1;
+
 
     NTHREADS = omp_get_max_threads();
     printf("Found %d Threads to train with\n", NTHREADS);
