@@ -42,12 +42,12 @@ int NTHREADS;
 int main() {
 
     NTHREADS = omp_get_max_threads();
-    printf("Found %d Threads to Train on\n\n", NTHREADS);
+    printf("Found %d Threads to train with\n", NTHREADS);
 
     const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
     Network *nn = create_network(length, ARCHITECTURE);
     if (USE_WEIGHTS) load_network(nn, NNWEIGHTS);
-    else printf("Created Network with randomized Weights\n");
+    else printf("Created Network with randomized Weights\n\n");
 
     printf("Loading Validation Dataset...\n");
     Sample *validate = load_samples(VALIDFILE, NVALIDATE);
@@ -188,7 +188,7 @@ void load_network(Network *nn, const char *fname) {
             exit(EXIT_FAILURE);
     }
 
-    printf("Created Network with Weights from %s\n", fname); fflush(stdout);
+    printf("Created Network with Weights from %s\n\n", fname); fflush(stdout);
 
     fclose(fin);
 }

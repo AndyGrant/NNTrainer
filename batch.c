@@ -25,65 +25,47 @@
 
 extern int NTHREADS;
 
-static void append_index(uint16_t *array, int *length, uint16_t index) {
+static void insert_value(uint16_t *arr, int *len, uint16_t value) {
 
-    if (*length == 0 || index > array[*length-1]) {
-        array[(*length)++] = index;
-        return;
+    int i, left = 0, right = *len;
+
+    while (left < right) {
+        i = (left + right) / 2;
+        if (value < arr[i]) right = i;
+        else if (value > arr[i]) left = i + 1;
+        else return;
     }
 
-    if (index < array[0]) {
-
-        for (int i = *length; i >= 1; i--)
-            array[i] = array[i-1];
-
-        array[0] = index;
-        *length = *length + 1;
-        return;
-    }
-
-    for (int i = 0; i < *length; i++) {
-
-        if (array[i] > index)
-            return;
-
-        if (array[i] < index && index < array[i+1]) {
-
-            for (int j = *length; j-1 >= i+1; j--)
-                array[j] = array[j-1];
-
-            array[i+1] = index;
-            *length = *length + 1;
-            return;
-        }
-    }
+    memmove(arr + left + 1, arr + left, (*len - left) * sizeof(uint16_t));
+    arr[left] = value;
+    ++*len;
 }
 
-static void append_indices(uint16_t *array, int *length, Sample *sample) {
+static void insert_indices(uint16_t *array, int *length, Sample *sample) {
 
     for (int i = 0; i < sample->length; i++) {
 
     #if NN_TYPE == NORMAL
 
-        append_index(array, length, sample->indices[i]);
+        insert_value(array, length, sample->indices[i]);
 
     #elif NN_TYPE == HALFKP
 
         int seg1_idx, seg2_idx;
         compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
 
-        append_index(array, length, seg1_idx);
-        append_index(array, length, seg2_idx);
+        insert_value(array, length, seg1_idx);
+        insert_value(array, length, seg2_idx);
 
     #elif NN_TYPE == RELATIVE
 
         int i1, i2, i3, i4;
         compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4);
 
-        append_index(array, length, i1);
-        append_index(array, length, i2);
-        append_index(array, length, i3);
-        append_index(array, length, i4);
+        insert_value(array, length, i1);
+        insert_value(array, length, i2);
+        insert_value(array, length, i3);
+        insert_value(array, length, i4);
 
     #else
 
@@ -101,7 +83,7 @@ static void create_batch(Batch *batch, Sample *start, int batch_size) {
 
     uint16_t array[MAX_INPUTS];
     for (int i = 0; i < batch_size; i++)
-        append_indices(array, &batch->inputs, &start[i]);
+        insert_indices(array, &batch->inputs, &start[i]);
 
     batch->indices = malloc(sizeof(uint16_t) * batch->inputs);
     memcpy(batch->indices, array, sizeof(uint16_t) * batch->inputs);
@@ -127,7 +109,6 @@ Batch *create_batches(Sample *samples, int nsamples, int batch_size) {
         saved += batches[i].inputs / (float) MAX_INPUTS;
     saved = 100.0 - (saved * 100.0 / (nsamples / batch_size));
 
-    printf("\nFinished Creating Batch Lists");
     printf("\nAverage savings of %.2f%%\n\n", saved);
     fflush(stdout);
 
