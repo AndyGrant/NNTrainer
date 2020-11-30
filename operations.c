@@ -76,7 +76,7 @@ static int relative_square(int colour, int sq) {
     return square(relative_rank_of(colour, sq), file_of(sq));
 }
 
-void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, int *i3, int *i4) {
+void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, int *i3, int *i4, int *i5, int *i6) {
 
     int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
     int nstmk = sample->turn == WHITE ? sample->bking : sample->wking;
@@ -98,9 +98,12 @@ void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, i
 
     *i3 = 40960 + (225 * (5 * (color == sample->turn) + piece)) + saug;
     *i4 = 40960 + (225 * (5 * (color != sample->turn) + piece)) + nsaug;
+
+    *i5 = 40960 + 2250 + 64 * (5 * (color == sample->turn) + piece) + srelsq;
+    *i6 = 40960 + 2250 + 64 * (5 * (color != sample->turn) + piece) + nsrelsq;
 }
 
-int nnue_to_relative(int encoded) {
+int nnue_to_relative_kmap(int encoded) {
 
     /// Given a value [0, 40960], which encodes a (King Sq, Piece-Col, Piece Sq),
     /// compute the relative index mapping of [0, 2250] which is the encoded form
@@ -114,6 +117,19 @@ int nnue_to_relative(int encoded) {
                              + (7 + file_of(kingsq) - file_of(piecesq));
 
     return (225 * piececol) + relative;
+}
+
+int nnue_to_relative_psqt(int encoded) {
+
+    /// Given a value [0, 40960], which encodes a (King Sq, Piece-Col, Piece Sq),
+    /// compute the relative index mapping of [0, 640] which is the encoded form
+    /// of (Piece-Col, Piece Sq).
+
+    const int piecesq   = (encoded % 64);       // Enc = (1 * Piece Square  )
+    const int piececol  = (encoded % 640) / 64; //     + (64 * Piece-Col    )
+    //    int kingsq    = (encoded / 640);      //     + (640 * King Sq     )
+
+    return (64 * piececol) + piecesq;
 }
 
 #endif
@@ -182,16 +198,18 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
 
     for (int i = 0; i < sample->length; i++) {
 
-        int i1, i2, i3, i4;
-        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4);
+        int i1, i2, i3, i4, i5, i6;
+        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4, &i5, &i6);
 
         for (int j = 0; j < matrix->cols; j++)
             output->values[seg1_head + j] += matrix->values[i1 * matrix->cols + j]
-                                           + matrix->values[i3 * matrix->cols + j];
+                                           + matrix->values[i3 * matrix->cols + j]
+                                           + matrix->values[i5 * matrix->cols + j];
 
         for (int j = 0; j < matrix->cols; j++)
             output->values[seg2_head + j] += matrix->values[i2 * matrix->cols + j]
-                                           + matrix->values[i4 * matrix->cols + j];
+                                           + matrix->values[i4 * matrix->cols + j]
+                                           + matrix->values[i6 * matrix->cols + j];
     }
 
 #else
@@ -300,14 +318,16 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 
     for (int i = 0; i < sample->length; i++) {
 
-        int i1, i2, i3, i4;
-        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4);
+        int i1, i2, i3, i4, i5, i6;
+        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4, &i5, &i6);
 
         for (int j = 0; j < grad->weights[0]->cols; j++) {
             grad->weights[0]->values[i1 * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
             grad->weights[0]->values[i2 * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
             grad->weights[0]->values[i3 * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
             grad->weights[0]->values[i4 * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+            grad->weights[0]->values[i5 * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
+            grad->weights[0]->values[i6 * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
         }
     }
 

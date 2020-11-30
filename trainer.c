@@ -48,11 +48,13 @@ void collapse_network(Network *nn) {
 
     for (int i = 0; i < rows; i++) {
 
-        const int offset = cols * i;
-        const int augoff = cols * (rows + nnue_to_relative(i));
+        const int offset  = cols * i;
+        const int augoff1 = cols * (rows + 0    + nnue_to_relative_kmap(i));
+        const int augoff2 = cols * (rows + 2250 + nnue_to_relative_psqt(i));
 
         for (int j = 0; j < cols; j++)
-            nn->weights[0]->values[offset+j] += nn->weights[0]->values[augoff+j];
+            nn->weights[0]->values[offset+j] += nn->weights[0]->values[augoff1+j]
+                                              + nn->weights[0]->values[augoff2+j];
     }
 }
 
@@ -125,7 +127,7 @@ int main() {
 
     // const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
     // Network *nn = create_network(length, ARCHITECTURE);\
-    // load_network(nn, "epoch53.nn");
+    // load_network(nn, "x128.nn");
     // export_network(nn);
     // return 1;
 

@@ -28,8 +28,9 @@ void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx
 #endif
 
 #if NN_TYPE == RELATIVE
-void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, int *i3, int *i4);
-int nnue_to_relative(int encoded);
+void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, int *i3, int *i4, int *i5, int *i6);
+int nnue_to_relative_kmap(int encoded);
+int nnue_to_relative_psqt(int encoded);
 #endif
 
 void add_array_to_vector(Vector *vector, const float *addends);

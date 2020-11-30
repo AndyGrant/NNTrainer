@@ -59,13 +59,15 @@ static void insert_indices(uint16_t *array, int *length, Sample *sample) {
 
     #elif NN_TYPE == RELATIVE
 
-        int i1, i2, i3, i4;
-        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4);
+        int i1, i2, i3, i4, i5, i6;
+        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4, &i5, &i6);
 
         insert_value(array, length, i1);
         insert_value(array, length, i2);
         insert_value(array, length, i3);
         insert_value(array, length, i4);
+        insert_value(array, length, i5);
+        insert_value(array, length, i6);
 
     #else
 

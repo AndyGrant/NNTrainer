@@ -24,12 +24,12 @@
 #include "types.h"
 
 static const int   NSAMPLES    = 1024 * 1024;
-static const char  DATAFILE[]  = "training.d8";
+static const char  DATAFILE[]  = "training.d12";
 
 static const int   NVALIDATE   = 1024 * 1024;
-static const char  VALIDFILE[] = "validation.d8";
+static const char  VALIDFILE[] = "validation.d12";
 
-static const int   MAX_INPUTS  = 43210;
+static const int   MAX_INPUTS  = 43850;
 static const int   BATCHSIZE   = 1024;
 static const float LEARNRATE   = 0.001;
 
@@ -39,8 +39,8 @@ static const char  NNWEIGHTS[] = "";
 static const float SIGM_COEFF = 2.42 / 400.00;
 
 static const Layer ARCHITECTURE[] = {
-    {43210, 256, &activate_relu, &backprop_relu },
-    {  512,  32, &activate_relu, &backprop_relu },
+    {43850, 128, &activate_relu, &backprop_relu },
+    {  256,  32, &activate_relu, &backprop_relu },
     {   32,  32, &activate_relu, &backprop_relu },
     {   32,   1, &activate_null, &backprop_null },
 };
