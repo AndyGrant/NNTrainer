@@ -41,31 +41,73 @@ int NTHREADS;
 
 #if NN_TYPE == RELATIVE
 
+void collapse_network(Network *nn) {
+
+    const int rows = nn->weights[0]->rows = 40960;
+    const int cols = nn->weights[0]->cols;
+
+    for (int i = 0; i < rows; i++) {
+
+        const int offset = cols * i;
+        const int augoff = cols * (rows + nnue_to_relative(i));
+
+        for (int j = 0; j < cols; j++)
+            nn->weights[0]->values[offset+j] += nn->weights[0]->values[augoff+j];
+    }
+}
+
 void export_network(Network *nn) {
 
     FILE *fout = fopen("exported.nn", "wb");
 
+    collapse_network(nn); // Collapse the Factorizer Inputs
+
     {
-        const int rows = 40960;
-        const int cols = nn->weights[0]->cols;
-        float *weights = malloc(sizeof(float) * (rows * cols));
+        #define CLAMP1KB(f)   ((f) > 2048 ? 2048 : ((f) < -2048 ? -2048 : (f)))
+        #define QUANTIN16B(f) ((int16_t) CLAMP1KB(roundf(64.0 * (f))))
+        #define QUANTIN16W(f) ((int16_t) CLAMP1KB(roundf(64.0 * (f))))
 
-        fwrite(nn->biases[0]->values, sizeof(float), cols, fout);
+        const int layer = 0;
+        const int rows  = nn->weights[layer]->rows;
+        const int cols  = nn->weights[layer]->cols;
 
-        for (int i = 0; i < rows; i++) {
+        int16_t *biases  = malloc(sizeof(int16_t) * cols);
+        int16_t *weights = malloc(sizeof(int16_t) * rows * cols);
 
-            const int augmented = rows + nnue_to_relative(i);
+        for (int i = 0; i < cols; i++)
+            biases[i] = QUANTIN16B(nn->biases[layer]->values[i]);
 
-            for (int j = 0; j < cols; j++)
-                weights[i * cols + j] = nn->weights[0]->values[i * cols + j]
-                                      + nn->weights[0]->values[augmented * cols + j];
-        }
+        for (int i = 0; i < rows * cols; i++)
+            weights[i] = QUANTIN16W(nn->weights[layer]->values[i]);
 
-        fwrite(weights, sizeof(float), rows * cols, fout);
-        free(weights);
+        fwrite(biases, sizeof(int16_t), cols, fout);
+        fwrite(weights, sizeof(int16_t), rows * cols, fout);
+        free(biases); free(weights);
     }
 
-    for (int layer = 1; layer < nn->layers; layer++) {
+    {
+        #define QUANT32B(f) ((int16_t) (roundf(64.0 * (f))))
+        #define QUANT16W(f) ((int32_t) (roundf(64.0 * (f))))
+
+        const int layer = 1;
+        const int rows  = nn->weights[layer]->rows;
+        const int cols  = nn->weights[layer]->cols;
+
+        int32_t *biases  = malloc(sizeof(int32_t) * cols);
+        int16_t *weights = malloc(sizeof(int16_t) * rows * cols);
+
+        for (int i = 0; i < cols; i++)
+            biases[i] = QUANT32B(nn->biases[layer]->values[i]);
+
+        for (int i = 0; i < rows * cols; i++)
+            weights[i] = QUANT16W(nn->weights[layer]->values[i]);
+
+        fwrite(biases, sizeof(int32_t), cols, fout);
+        fwrite(weights, sizeof(int16_t), rows * cols, fout);
+        free(biases); free(weights);
+    }
+
+    for (int layer = 2; layer < nn->layers; layer++) {
 
         const int rows = nn->weights[layer]->rows;
         const int cols = nn->weights[layer]->cols;
@@ -83,10 +125,9 @@ int main() {
 
     // const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
     // Network *nn = create_network(length, ARCHITECTURE);\
-    // load_network(nn, "../Testing/nnue.nn");
+    // load_network(nn, "epoch53.nn");
     // export_network(nn);
     // return 1;
-
 
     NTHREADS = omp_get_max_threads();
     printf("Found %d Threads to train with\n", NTHREADS);
@@ -199,7 +240,7 @@ void randomize_network(Network *nn) {
 
     for (int i = 0; i < nn->layers; i++)
         for (int j = 0; j < nn->weights[i]->rows * nn->weights[i]->cols; j++)
-            nn->weights[i]->values[j] = random();
+            nn->weights[i]->values[j] = random() / 4.0;
 
     #undef uniform
     #undef random
