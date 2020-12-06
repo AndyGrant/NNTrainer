@@ -30,7 +30,7 @@ static const int   NVALIDATE   = 1024 * 1024;
 static const char  VALIDFILE[] = "validation.d12";
 
 static const int   MAX_INPUTS  = 43850;
-static const int   BATCHSIZE   = 1024;
+static const int   BATCHSIZE   = 16384;
 static const float LEARNRATE   = 0.001;
 
 static const bool  USE_WEIGHTS = false;
