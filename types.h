@@ -22,7 +22,6 @@
 
 #define NORMAL   0 // Normal Networks with a single Input set
 #define HALFKP   1 // Networks with 2xHalfs via Shogi-King-Piece encoding
-#define RELATIVE 2 // HALFKP with an additional [15x15x10] Input Plane
 
 enum { WHITE, BLACK };
 

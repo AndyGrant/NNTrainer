@@ -50,17 +50,13 @@ typedef struct Sample {
     uint16_t indices[32];
 } Sample;
 
-#elif NN_TYPE == HALFKP || NN_TYPE == RELATIVE
+#elif NN_TYPE == HALFKP
 
 typedef struct Sample {
     float label;
     int8_t turn, wking, bking, length;
     uint16_t indices[32];
 } Sample;
-
-#else
-
-    #error No Architecture Detected
 
 #endif
 

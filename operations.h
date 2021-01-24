@@ -24,10 +24,6 @@
 #include "types.h"
 
 #if NN_TYPE == HALFKP
-void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx2);
-#endif
-
-#if NN_TYPE == RELATIVE
 void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, int *i3, int *i4, int *i5, int *i6);
 int nnue_to_relative_kmap(int encoded);
 int nnue_to_relative_psqt(int encoded);
