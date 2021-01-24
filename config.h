@@ -23,11 +23,11 @@
 #include "activate.h"
 #include "types.h"
 
-static const int   NSAMPLES    = 1024 * 1024;
-static const char  DATAFILE[]  = "training.d12";
+static const int   NSAMPLES    = 1024 * 1024 * 16;
+static const char  DATAFILE[]  = "output.nnbook3";
 
-static const int   NVALIDATE   = 1024 * 1024;
-static const char  VALIDFILE[] = "validation.d12";
+static const int   NVALIDATE   = 1024 * 1024 * 16;
+static const char  VALIDFILE[] = "output.nnbook3";
 
 static const int   MAX_INPUTS  = 43850;
 static const int   BATCHSIZE   = 16384;

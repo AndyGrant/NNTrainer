@@ -18,11 +18,24 @@
 
 #pragma once
 
-#include <stdlib.h>
+#include <assert.h>
 #include <stdalign.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #define ALIGN64 alignas(64)
 #define INLINE static inline
+
+INLINE int getlsb(uint64_t bb) {
+    assert(bb);  // lsb(0) is undefined
+    return __builtin_ctzll(bb);
+}
+
+INLINE int poplsb(uint64_t *bb) {
+    int lsb = getlsb(*bb);
+    *bb &= *bb - 1;
+    return lsb;
+}
 
 #if defined(_WIN32) || defined(_WIN64)
 

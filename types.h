@@ -26,6 +26,8 @@
 
 enum { WHITE, BLACK };
 
+enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };
+
 /// Forward declaration of all structs and types for simplifying includes
 
 typedef struct Batch     Batch;
