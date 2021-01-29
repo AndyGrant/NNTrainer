@@ -32,14 +32,6 @@ float relu_prime(float x) {
     return x > 0.0 ? 1.0 : 0.0;
 }
 
-float clipped_relu(float x) {
-    return fmaxf(0.0, fminf(1.0, x));
-}
-
-float clipped_relu_prime(float x) {
-    return (0.0 < x && x < 1.0) ? 1.0 : 0.0;
-}
-
 float sigmoid(float x) {
     return 1.0 / (1.0 + expf(-SIGM_COEFF * x));
 }
@@ -50,24 +42,19 @@ float sigmoid_prime(float x) {
 }
 
 /// Activation functions. These functions are all matching
-/// >> typedef void (*Activation) (const Vector*, Vector*);
+/// >> typedef void (*Activation) (Vector*, const Vector*);
 
-void activate_relu(const Vector *input, Vector *output) {
+void activate_relu(Vector *input, const Vector *output) {
     for (int i = 0; i < input->length; i++)
         output->values[i] = relu(input->values[i]);
 }
 
-void activate_clipped_relu(const Vector *input, Vector *output) {
-    for (int i = 0; i < input->length; i++)
-        output->values[i] = clipped_relu(input->values[i]);
-}
-
-void activate_sigmoid(const Vector *input, Vector *output) {
+void activate_sigmoid(Vector *input, const Vector *output) {
     for (int i = 0; i < input->length; i++)
         output->values[i] = sigmoid(input->values[i]);
 }
 
-void activate_null(const Vector *input, Vector *output) {
+void activate_null(Vector *input, const Vector *output) {
     for (int i = 0; i < input->length; i++)
         output->values[i] = input->values[i];
 }
@@ -78,11 +65,6 @@ void activate_null(const Vector *input, Vector *output) {
 void backprop_relu(float *dlossdz, const Vector *vector) {
     for (int i = 0; i < vector->length; i++)
         dlossdz[i] *= relu_prime(vector->values[i]);
-}
-
-void backprop_clipped_relu(float *dlossdz, const Vector *vector) {
-    for (int i = 0; i < vector->length; i++)
-        dlossdz[i] *= clipped_relu_prime(vector->values[i]);
 }
 
 void backprop_sigmoid(float *dlossdz, const Vector *vector) {
