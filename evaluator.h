@@ -42,7 +42,7 @@ INLINE Evaluator *create_evaluator(Network *nn) {
         eval->activated[i]   = create_vector(nn->biases[i]->length);
     }
 
-#elif NN_TYPE == HALFKP
+#elif NN_TYPE == HALFKP || NN_TYPE == RELATIVE
 
     eval->unactivated[0] = create_vector(2 * nn->biases[0]->length);
     eval->activated[0]   = create_vector(2 * nn->biases[0]->length);
@@ -51,6 +51,10 @@ INLINE Evaluator *create_evaluator(Network *nn) {
         eval->unactivated[i] = create_vector(nn->biases[i]->length);
         eval->activated[i]   = create_vector(nn->biases[i]->length);
     }
+
+#else
+
+    #error No Architecture Detected
 
 #endif
 

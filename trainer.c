@@ -40,7 +40,7 @@
 
 int NTHREADS;
 
-#if NN_TYPE == HALFKP
+#if NN_TYPE == RELATIVE
 
 void collapse_network(Network *nn) {
 
@@ -347,7 +347,7 @@ void load_sample(FILE *fin, Sample *sample) {
         sample->indices[sample->length++] = normal_encode(c, pt, sq);
     }
 
-#elif NN_TYPE == HALFKP
+#elif NN_TYPE == HALFKP || NN_TYPE == RELATIVE
 
     sample->label  = (float ) eval;
     sample->turn   = (int8_t) turn;
@@ -368,6 +368,10 @@ void load_sample(FILE *fin, Sample *sample) {
 
     if (sample->turn)
         sample->label = -sample->label;
+
+#else
+
+    #error No Architecture Detected
 
 #endif
 

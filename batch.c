@@ -51,6 +51,14 @@ static void insert_indices(uint16_t *array, int *length, Sample *sample) {
 
     #elif NN_TYPE == HALFKP
 
+        int seg1_idx, seg2_idx;
+        compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
+
+        insert_value(array, length, seg1_idx);
+        insert_value(array, length, seg2_idx);
+
+    #elif NN_TYPE == RELATIVE
+
         int i1, i2, i3, i4, i5, i6;
         compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4, &i5, &i6);
 
@@ -60,6 +68,10 @@ static void insert_indices(uint16_t *array, int *length, Sample *sample) {
         insert_value(array, length, i4);
         insert_value(array, length, i5);
         insert_value(array, length, i6);
+
+    #else
+
+        #error No Architecture Detected
 
     #endif
 
