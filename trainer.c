@@ -19,7 +19,6 @@
 #include <assert.h>
 #include <math.h>
 #include <omp.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -293,7 +292,7 @@ Sample *load_samples(const char *fname, int length) {
         (float)(sizeof(Sample) * length) / (1024 * 1024));
     fflush(stdout);
 
-    FILE *fin = fopen(fname, "rb");
+    FILE *fin = fopen(fname, "r");
 
     for (int i = 0; i < length; i++) {
 
@@ -315,59 +314,31 @@ Sample *load_samples(const char *fname, int length) {
 
 void load_sample(FILE *fin, Sample *sample) {
 
-    int16_t eval;
-    uint64_t pieces;
-    uint8_t turn, N, wksq, bksq, packed[16];
+    char *ptr, line[1024];
+    if (fgets(line, 1024, fin) == NULL)
+        exit(EXIT_FAILURE);
 
-    fread(&pieces, sizeof(uint64_t), 1, fin);
-    fread(&eval,   sizeof(int16_t ), 1, fin);
-    fread(&turn,   sizeof(uint8_t ), 1, fin);
-    fread(&wksq,   sizeof(uint8_t ), 1, fin);
-    fread(&bksq,   sizeof(uint8_t ), 1, fin);
-    fread(&N,      sizeof(uint8_t ), 1, fin);
-    fread(packed,  sizeof(uint8_t ), (N + 1) / 2, fin);
-
-    #define decode(i, A) (((i) % 2) ? (A[(i)/2] & 0xF) : (A[(i)/2]) >> 4)
-
-    #define normal_encode(c, pt, sq) (64 * ((6 * (c)) + (pt)) + sq)
-    #define halfkp_encode(c, pt, sq) (64 * ((5 * (c)) + (pt)) + sq)
 
 #if NN_TYPE == NORMAL
 
-    sample->label  = (float ) eval;
-    sample->length = (int8_t) 0;
+    sample->label = atof(strtok(line, " "));
 
-    for (int i = 0; pieces; i++) {
-
-        uint8_t enc = decode(i, packed);
-
-        int sq = poplsb(&pieces);
-        int c  = enc / 8, pt = enc % 8;
-
-        sample->indices[sample->length++] = normal_encode(c, pt, sq);
-    }
+    sample->length = 0;
+    while ((ptr = strtok(NULL, " ")) != NULL)
+        sample->indices[sample->length++] = atoi(ptr);
 
 #elif NN_TYPE == HALFKP || NN_TYPE == RELATIVE
 
-    sample->label  = (float ) eval;
-    sample->turn   = (int8_t) turn;
-    sample->wking  = (int8_t) wksq;
-    sample->bking  = (int8_t) bksq;
-    sample->length = (int8_t) 0;
+    sample->label = atof(strtok(line, " "));
+    sample->turn  = atoi(strtok(NULL, " "));
+    sample->wking = atoi(strtok(NULL, " "));
+    sample->bking = atoi(strtok(NULL, " "));
 
-    for (int i = 0; pieces; i++) {
+    sample->length = 0;
+    while ((ptr = strtok(NULL, " ")) != NULL)
+        sample->indices[sample->length++] = atoi(ptr);
 
-        uint8_t enc = decode(i, packed);
-
-        int sq = poplsb(&pieces);
-        int c  = enc / 8, pt = enc % 8;
-
-        if (pt != KING)
-            sample->indices[sample->length++] = halfkp_encode(c, pt, sq);
-    }
-
-    if (sample->turn)
-        sample->label = -sample->label;
+    if (sample->turn) sample->label = -sample->label;
 
 #else
 
@@ -375,10 +346,7 @@ void load_sample(FILE *fin, Sample *sample) {
 
 #endif
 
-    #undef unpack_ith
-    #undef normal_encode
-    #undef halfkp_encode
- }
+}
 
 /**************************************************************************************************************/
 

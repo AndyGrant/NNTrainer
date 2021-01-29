@@ -18,7 +18,7 @@ CC	 = gcc
 SRC	 = *.c
 LIBS = -fopenmp -lm
 
-WFLAGS = -Wall -Wextra -Wshadow
+WFLAGS = -Wall -Wextra -Wshadow -Wpedantic
 CFLAGS = -O3 -flto -ffast-math -mfma -march=native -DNDEBUG
 PFLAGS = -O0 -p -pg -ffast-math -mfma -march=native -DNDEBUG
 
