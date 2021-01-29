@@ -39,7 +39,7 @@ typedef struct Optimizer Optimizer;
 typedef struct Sample    Sample;
 typedef struct Vector    Vector;
 
-typedef void  (*Activation) (Vector*, const Vector*);
+typedef void  (*Activation) (const Vector*, Vector*);
 typedef void  (*BackProp)   (float *dlossdz, const Vector*);
 typedef float (*Loss)       (const Sample*, const Vector*);
 typedef void  (*LossProp)   (const Sample*, const Vector*, float *);

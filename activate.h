@@ -20,23 +20,19 @@
 
 #include "types.h"
 
-float relu(float x);
-float relu_prime(float x);
-
-float sigmoid(float x);
-float sigmoid_prime(float x);
-
 /// Activation functions. These functions are all matching
-/// >> typedef void (*Activation) (Vector*, const Vector*);
+/// >> typedef void (*Activation) (const Vector*, Vector*);
 
-void activate_relu(Vector *input, const Vector *output);
-void activate_sigmoid(Vector *input, const Vector *output);
-void activate_null(Vector *input, const Vector *output);
+void activate_relu(const Vector *input, Vector *output);
+void activate_clipped_relu(const Vector *input, Vector *output);
+void activate_sigmoid(const Vector *input, Vector *output);
+void activate_null(const Vector *input, Vector *output);
 
 /// BackProp functions. These functions are all matching
 /// >> typedef void (*BackProp) (float *dlossdz, const Vector *vector);
 
 void backprop_relu(float *dlossdz, const Vector *vector);
+void backprop_clipped_relu(float *dlossdz, const Vector *vector);
 void backprop_sigmoid(float *dlossdz, const Vector *vector);
 void backprop_null(float *dlossdz, const Vector *vector);
 
