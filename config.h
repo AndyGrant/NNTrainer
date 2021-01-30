@@ -23,11 +23,11 @@
 #include "activate.h"
 #include "types.h"
 
-static const int   NSAMPLES    = 1024 * 1024;
-static const char  DATAFILE[]  = "training.d12";
+static const int   NSAMPLES    = 1024 * 1024 * 16;
+static const char  DATAFILE[]  = "training.nndata";
 
-static const int   NVALIDATE   = 1024 * 1024;
-static const char  VALIDFILE[] = "validation.d12";
+static const int   NVALIDATE   = 1024 * 1024 * 8;
+static const char  VALIDFILE[] = "validation.nndata";
 
 static const int   MAX_INPUTS  = 43850;
 static const int   BATCHSIZE   = 16384;
@@ -49,4 +49,4 @@ static const Layer ARCHITECTURE[] = {
 
 #define LOSS_FUNC     l2_one_neuron_loss
 #define LOSSPROP_FUNC l2_one_neuron_lossprob
-#define NN_TYPE       RELATIVE
+#define NN_TYPE       HALFKP

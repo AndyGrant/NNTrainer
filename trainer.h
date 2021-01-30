@@ -50,17 +50,16 @@ typedef struct Sample {
     uint16_t indices[32];
 } Sample;
 
-#elif NN_TYPE == HALFKP || NN_TYPE == RELATIVE
+#elif NN_TYPE == HALFKP
 
 typedef struct Sample {
-    float label;
-    int8_t turn, wking, bking, length;
-    uint16_t indices[32];
+    uint64_t occupied;   // 8-byte occupancy bitboard ( No Kings )
+    int16_t  label;      // 2-byte int for the target label
+    uint8_t  turn;       // 1-byte int for the side-to-move flag
+    uint8_t  wking;      // 1-byte int for the White King Square
+    uint8_t  bking;      // 1-byte int for the Black King Square
+    uint8_t  packed[15]; // 1-byte int per two non-King pieces
 } Sample;
-
-#else
-
-    #error No Architecture Detected
 
 #endif
 

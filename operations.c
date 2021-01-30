@@ -40,7 +40,10 @@ static int relative_square(int colour, int sq) {
     return square(relative_rank_of(colour, sq), file_of(sq));
 }
 
-void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx2) {
+void compute_inputs(const Sample *sample, int index, int square, int *inputs) {
+
+    #define nibble_decode(i, A) (((i) % 2) ? (A[(i)/2] & 0xF) : (A[(i)/2]) >> 4)
+    #define halfkp_encode(ksq, cr, pt, sq) (640 * (ksq) + 64 * (5 * (cr) + (pt)) + sq)
 
     int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
     int nstmk = sample->turn == WHITE ? sample->bking : sample->wking;
@@ -48,59 +51,26 @@ void compute_indices(const Sample *sample, uint16_t encoded, int *idx1, int *idx
     int sksq  = relative_square( sample->turn,  stmk);
     int nsksq = relative_square(!sample->turn, nstmk);
 
-    int srelsq  = relative_square( sample->turn, encoded % 64);
-    int nsrelsq = relative_square(!sample->turn, encoded % 64);
+    int srelsq  = relative_square( sample->turn, square);
+    int nsrelsq = relative_square(!sample->turn, square);
 
-    int pcenc = (encoded - (encoded % 64)) / 64;
-    int piece = pcenc % 5, color = pcenc / 5;
-
-    *idx1 = (64 * 10 * sksq ) + (64 * (5 * (color == sample->turn) + piece)) + srelsq;
-    *idx2 = (64 * 10 * nsksq) + (64 * (5 * (color != sample->turn) + piece)) + nsrelsq;
-}
-
-#endif
-
-#if NN_TYPE == RELATIVE
-
-static int file_of(int sq) { return sq % 8; }
-
-static int rank_of(int sq) { return sq / 8; }
-
-static int square(int rank, int file) { return rank * 8 + file; }
-
-static int relative_rank_of(int colour, int sq) {
-    return colour == WHITE ? rank_of(sq) : 7 - rank_of(sq);
-}
-
-static int relative_square(int colour, int sq) {
-    return square(relative_rank_of(colour, sq), file_of(sq));
-}
-
-void compute_indices(const Sample *sample, uint16_t encoded, int *i1, int *i2, int *i3, int *i4, int *i5, int *i6) {
-
-    int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
-    int nstmk = sample->turn == WHITE ? sample->bking : sample->wking;
-
-    int sksq  = relative_square( sample->turn,  stmk);
-    int nsksq = relative_square(!sample->turn, nstmk);
-
-    int srelsq  = relative_square( sample->turn, encoded % 64);
-    int nsrelsq = relative_square(!sample->turn, encoded % 64);
-
-    int pcenc = (encoded - (encoded % 64)) / 64;
-    int piece = pcenc % 5, color = pcenc / 5;
+    int piece = nibble_decode(index, sample->packed) % 8;
+    int color = nibble_decode(index, sample->packed) / 8;
 
     int saug  = 15 * (7 + rank_of( sksq) - rank_of( srelsq)) + (7 + file_of( sksq) - file_of( srelsq));
     int nsaug = 15 * (7 + rank_of(nsksq) - rank_of(nsrelsq)) + (7 + file_of(nsksq) - file_of(nsrelsq));
 
-    *i1 = (64 * 10 * sksq ) + (64 * (5 * (color == sample->turn) + piece)) + srelsq;
-    *i2 = (64 * 10 * nsksq) + (64 * (5 * (color != sample->turn) + piece)) + nsrelsq;
+    inputs[0] = (64 * 10 * sksq ) + (64 * (5 * (color == sample->turn) + piece)) + srelsq;
+    inputs[1] = (64 * 10 * nsksq) + (64 * (5 * (color != sample->turn) + piece)) + nsrelsq;
 
-    *i3 = 40960 + (225 * (5 * (color == sample->turn) + piece)) + saug;
-    *i4 = 40960 + (225 * (5 * (color != sample->turn) + piece)) + nsaug;
+    inputs[2] = 40960 + (225 * (5 * (color == sample->turn) + piece)) + saug;
+    inputs[3] = 40960 + (225 * (5 * (color != sample->turn) + piece)) + nsaug;
 
-    *i5 = 40960 + 2250 + 64 * (5 * (color == sample->turn) + piece) + srelsq;
-    *i6 = 40960 + 2250 + 64 * (5 * (color != sample->turn) + piece) + nsrelsq;
+    inputs[4] = 40960 + 2250 + 64 * (5 * (color == sample->turn) + piece) + srelsq;
+    inputs[5] = 40960 + 2250 + 64 * (5 * (color != sample->turn) + piece) + nsrelsq;
+
+    #undef nibble_encode
+    #undef halfkp_encode
 }
 
 int nnue_to_relative_kmap(int encoded) {
@@ -168,53 +138,28 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
 
 #elif NN_TYPE == HALFKP
 
-    int seg1_head = 0, seg2_head = matrix->cols;
+    uint64_t bb = sample->occupied;
+    int inputs[6], seg1_head = 0, seg2_head = matrix->cols;
 
     for (int i = 0; i < bias->length; i++) {
         output->values[seg1_head + i] = bias->values[i];
         output->values[seg2_head + i] = bias->values[i];
     }
 
-    for (int i = 0; i < sample->length; i++) {
+    for (int i = 0; bb != 0ull; i++) {
 
-        int seg1_idx, seg2_idx;
-        compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
-
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[seg1_head + j] += matrix->values[seg1_idx * matrix->cols + j];
+        compute_inputs(sample, i, poplsb(&bb), inputs);
 
         for (int j = 0; j < matrix->cols; j++)
-            output->values[seg2_head + j] += matrix->values[seg2_idx * matrix->cols + j];
+            output->values[seg1_head + j] += matrix->values[inputs[0] * matrix->cols + j]
+                                           + matrix->values[inputs[2] * matrix->cols + j]
+                                           + matrix->values[inputs[4] * matrix->cols + j];
+
+        for (int j = 0; j < matrix->cols; j++)
+            output->values[seg2_head + j] += matrix->values[inputs[1] * matrix->cols + j]
+                                           + matrix->values[inputs[3] * matrix->cols + j]
+                                           + matrix->values[inputs[5] * matrix->cols + j];
     }
-
-#elif NN_TYPE == RELATIVE
-
-    int seg1_head = 0, seg2_head = matrix->cols;
-
-    for (int i = 0; i < bias->length; i++) {
-        output->values[seg1_head + i] = bias->values[i];
-        output->values[seg2_head + i] = bias->values[i];
-    }
-
-    for (int i = 0; i < sample->length; i++) {
-
-        int i1, i2, i3, i4, i5, i6;
-        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4, &i5, &i6);
-
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[seg1_head + j] += matrix->values[i1 * matrix->cols + j]
-                                           + matrix->values[i3 * matrix->cols + j]
-                                           + matrix->values[i5 * matrix->cols + j];
-
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[seg2_head + j] += matrix->values[i2 * matrix->cols + j]
-                                           + matrix->values[i4 * matrix->cols + j]
-                                           + matrix->values[i6 * matrix->cols + j];
-    }
-
-#else
-
-    #error No Architecture Detected
 
 #endif
 
@@ -290,50 +235,26 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 
 #elif NN_TYPE == HALFKP
 
-    int seg1_head = 0, seg2_head = grad->weights[0]->cols;
+    uint64_t bb = sample->occupied;
+    int inputs[6], seg1_head = 0, seg2_head = grad->weights[0]->cols;
 
     nn->backprops[0](dlossdz, eval->unactivated[0]);
     for (int i = 0; i < grad->biases[0]->length; i++)
         grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
 
-    for (int i = 0; i < sample->length; i++) {
+    for (int i = 0; bb != 0ull; i++) {
 
-        int seg1_idx, seg2_idx;
-        compute_indices(sample, sample->indices[i], &seg1_idx, &seg2_idx);
-
-        for (int j = 0; j < grad->weights[0]->cols; j++)
-            grad->weights[0]->values[seg1_idx * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
-
-        for (int j = 0; j < grad->weights[0]->cols; j++)
-            grad->weights[0]->values[seg2_idx * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
-    }
-
-#elif NN_TYPE == RELATIVE
-
-    int seg1_head = 0, seg2_head = grad->weights[0]->cols;
-
-    nn->backprops[0](dlossdz, eval->unactivated[0]);
-    for (int i = 0; i < grad->biases[0]->length; i++)
-        grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
-
-    for (int i = 0; i < sample->length; i++) {
-
-        int i1, i2, i3, i4, i5, i6;
-        compute_indices(sample, sample->indices[i], &i1, &i2, &i3, &i4, &i5, &i6);
+        compute_inputs(sample, i, poplsb(&bb), inputs);
 
         for (int j = 0; j < grad->weights[0]->cols; j++) {
-            grad->weights[0]->values[i1 * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
-            grad->weights[0]->values[i2 * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
-            grad->weights[0]->values[i3 * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
-            grad->weights[0]->values[i4 * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
-            grad->weights[0]->values[i5 * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
-            grad->weights[0]->values[i6 * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+            grad->weights[0]->values[inputs[0] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
+            grad->weights[0]->values[inputs[1] * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+            grad->weights[0]->values[inputs[2] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
+            grad->weights[0]->values[inputs[3] * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+            grad->weights[0]->values[inputs[4] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
+            grad->weights[0]->values[inputs[5] * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
         }
     }
-
-#else
-
-    #error No Architecture Detected
 
 #endif
 

@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <math.h>
 #include <omp.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +40,7 @@
 
 int NTHREADS;
 
-#if NN_TYPE == RELATIVE
+#if NN_TYPE == HALFKP
 
 void collapse_network(Network *nn) {
 
@@ -126,11 +127,12 @@ void export_network(Network *nn) {
 int main() {
 
     // const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
-    // Network *nn = create_network(length, ARCHITECTURE);\
+    // Network *nn = create_network(length, ARCHITECTURE);
     // load_network(nn, "x128.nn");
     // export_network(nn);
     // return 1;
 
+    setvbuf(stdout, NULL, _IONBF, 0);
     NTHREADS = omp_get_max_threads();
     printf("Found %d Threads to train with\n", NTHREADS);
 
@@ -190,7 +192,6 @@ int main() {
 
         printf("[%4d] [%0.3fs] [Training = %10.4f] [Validation = %10.4f]\n",
             epoch, elapsed, loss / NSAMPLES, vloss / NVALIDATE);
-        fflush(stdout);
 
         char fname[512];
         sprintf(fname, "%sepoch%d.nn", "Networks/", epoch);
@@ -278,7 +279,7 @@ void load_network(Network *nn, const char *fname) {
             exit(EXIT_FAILURE);
     }
 
-    printf("Created Network with Weights from %s\n\n", fname); fflush(stdout);
+    printf("Created Network with Weights from %s\n\n", fname);
 
     fclose(fin);
 }
@@ -287,25 +288,19 @@ void load_network(Network *nn, const char *fname) {
 
 Sample *load_samples(const char *fname, int length) {
 
-    Sample *samples = malloc(sizeof(Sample) * length);
+    Sample *samples = calloc(length, sizeof(Sample));
     printf("Allocated %.2fMB for Samples\n",
         (float)(sizeof(Sample) * length) / (1024 * 1024));
-    fflush(stdout);
 
-    FILE *fin = fopen(fname, "r");
+    FILE *fin = fopen(fname, "rb");
 
     for (int i = 0; i < length; i++) {
-
         load_sample(fin, &samples[i]);
-
-        if (i == length - 1 || i % (1024*256) == 0) {
+        if (i == length - 1 || i % (1024*256) == 0)
             printf("\rLoaded %d of %d Samples", i+1, length);
-            fflush(stdout);
-        }
     }
 
     printf("\nFinished Reading %s\n\n", fname);
-    fflush(stdout);
 
     fclose(fin);
 
@@ -314,39 +309,63 @@ Sample *load_samples(const char *fname, int length) {
 
 void load_sample(FILE *fin, Sample *sample) {
 
-    char *ptr, line[1024];
-    if (fgets(line, 1024, fin) == NULL)
-        exit(EXIT_FAILURE);
+    int16_t eval;
+    uint64_t pieces;
+    uint8_t turn, N, wksq, bksq, packed[16];
 
+    fread(&pieces, sizeof(uint64_t), 1, fin);
+    fread(&eval,   sizeof(int16_t ), 1, fin);
+    fread(&turn,   sizeof(uint8_t ), 1, fin);
+    fread(&wksq,   sizeof(uint8_t ), 1, fin);
+    fread(&bksq,   sizeof(uint8_t ), 1, fin);
+    fread(&N,      sizeof(uint8_t ), 1, fin);
+    fread(packed,  sizeof(uint8_t ), (N + 1) / 2, fin);
+
+    #define nibble_decode(i, A) (((i) % 2) ? (A[(i)/2] & 0xF) : (A[(i)/2]) >> 4)
+    #define nibble_encode(i, A, cp) (A[(i)/2] |= (((i) % 2) ? (cp) : (cp << 4)))
+    #define normal_encode(c, pt, sq) (64 * ((6 * (c)) + (pt)) + sq)
 
 #if NN_TYPE == NORMAL
 
-    sample->label = atof(strtok(line, " "));
+    sample->label  = (float ) eval;
+    sample->length = (int8_t) 0;
 
-    sample->length = 0;
-    while ((ptr = strtok(NULL, " ")) != NULL)
-        sample->indices[sample->length++] = atoi(ptr);
+    for (int i = 0; pieces; i++) {
 
-#elif NN_TYPE == HALFKP || NN_TYPE == RELATIVE
+        uint8_t enc = nibble_decode(i, packed);
 
-    sample->label = atof(strtok(line, " "));
-    sample->turn  = atoi(strtok(NULL, " "));
-    sample->wking = atoi(strtok(NULL, " "));
-    sample->bking = atoi(strtok(NULL, " "));
+        int sq = poplsb(&pieces);
+        int c  = enc / 8, pt = enc % 8;
 
-    sample->length = 0;
-    while ((ptr = strtok(NULL, " ")) != NULL)
-        sample->indices[sample->length++] = atoi(ptr);
+        sample->indices[sample->length++] = normal_encode(c, pt, sq);
+    }
 
-    if (sample->turn) sample->label = -sample->label;
+#elif NN_TYPE == HALFKP
 
-#else
+    sample->occupied = pieces;
+    sample->label    = eval;
+    sample->turn     = turn;
+    sample->wking    = wksq;
+    sample->bking    = bksq;
 
-    #error No Architecture Detected
+    for (int i = 0, j = 0; pieces != 0ull; i++, j++) {
+
+        uint8_t cpdata = nibble_decode(i, packed);
+        int sq = poplsb(&pieces), pt = cpdata % 8;
+
+        if (pt != KING) nibble_encode(j, sample->packed, cpdata);
+        if (pt == KING) { sample->occupied ^= 1ull << sq; j--; }
+    }
+
+    if (sample->turn)
+        sample->label = -sample->label;
 
 #endif
 
-}
+    #undef nibble_decode
+    #undef nibble_encode
+    #undef normal_encode
+ }
 
 /**************************************************************************************************************/
 
