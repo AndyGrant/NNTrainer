@@ -177,6 +177,11 @@ int main() {
             }
 
             update_network(opt, nn, grads, &batches[batch]);
+
+	    if (batch % 64 == 0) {
+	        double elapsed = (get_time_point() - start) / 1000.0;
+	        printf("\r[%4d] [%8.3fs] [Batch %d / %d]", epoch, elapsed, batch, NSAMPLES / BATCHSIZE);
+	    }
         }
 
         double elapsed = (get_time_point() - start) / 1000.0;
@@ -190,7 +195,7 @@ int main() {
             vloss += LOSS_FUNC(&validate[i], evals[tidx]->activated[nn->layers-1]);
         }
 
-        printf("[%4d] [%0.3fs] [Training = %10.4f] [Validation = %10.4f]\n",
+        printf("\r[%4d] [%8.3fs] [Training = %10.4f] [Validation = %10.4f]\n",
             epoch, elapsed, loss / NSAMPLES, vloss / NVALIDATE);
 
         char fname[512];
