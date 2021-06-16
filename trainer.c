@@ -148,8 +148,8 @@ int main() {
     Sample *samples  = load_samples(DATAFILE, NSAMPLES);
 
     Batch *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
+    Optimizer *opt = create_optimizer(nn);
 
-    Optimizer *opt  = create_optimizer(nn);
     Evaluator *evals[NTHREADS];
     Gradient  *grads[NTHREADS];
 
@@ -161,7 +161,7 @@ int main() {
 
     for (int epoch = 0; epoch < 25000; epoch++) {
 
-        float loss = 0.0, vloss = 0.0;
+        double loss = 0.0, vloss = 0.0;
         double start = get_time_point();
 
         /// Train by iterating over each of the Training Samples
@@ -178,10 +178,10 @@ int main() {
 
             update_network(opt, nn, grads, &batches[batch]);
 
-	    if (batch % 64 == 0) {
-	        double elapsed = (get_time_point() - start) / 1000.0;
-	        printf("\r[%4d] [%8.3fs] [Batch %d / %d]", epoch, elapsed, batch, NSAMPLES / BATCHSIZE);
-	    }
+            if (batch % 64 == 0) {
+                double elapsed = (get_time_point() - start) / 1000.0;
+                printf("\r[%4d] [%8.3fs] [Batch %d / %d]", epoch, elapsed, batch, NSAMPLES / BATCHSIZE);
+            }
         }
 
         double elapsed = (get_time_point() - start) / 1000.0;
@@ -195,7 +195,7 @@ int main() {
             vloss += LOSS_FUNC(&validate[i], evals[tidx]->activated[nn->layers-1]);
         }
 
-        printf("\r[%4d] [%8.3fs] [Training = %10.4f] [Validation = %10.4f]\n",
+        printf("\r[%4d] [%8.3fs] [Training = %2.10f] [Validation = %2.10f]\n",
             epoch, elapsed, loss / NSAMPLES, vloss / NVALIDATE);
 
         char fname[512];
@@ -332,8 +332,8 @@ void load_sample(FILE *fin, Sample *sample) {
 
 #if NN_TYPE == NORMAL
 
-    sample->label  = (float ) eval;
-    sample->length = (int8_t) 0;
+    sample->label  = sigmoid(eval);
+    sample->length = 0;
 
     for (int i = 0; pieces; i++) {
 
@@ -348,7 +348,6 @@ void load_sample(FILE *fin, Sample *sample) {
 #elif NN_TYPE == HALFKP
 
     sample->occupied = pieces;
-    sample->label    = eval;
     sample->turn     = turn;
     sample->wking    = wksq;
     sample->bking    = bksq;
@@ -362,8 +361,7 @@ void load_sample(FILE *fin, Sample *sample) {
         if (pt == KING) { sample->occupied ^= 1ull << sq; j--; }
     }
 
-    if (sample->turn)
-        sample->label = -sample->label;
+    sample->label = sample->turn ? sigmoid(-eval) : sigmoid(eval);
 
 #endif
 

@@ -24,7 +24,8 @@
 #include <stdlib.h>
 
 #define ALIGN64 alignas(64)
-#define INLINE static inline
+#define INLINE static inline __attribute__((always_inline))
+#define NOINLINE __attribute__((noinline))
 
 INLINE int getlsb(uint64_t bb) {
     assert(bb);  // lsb(0) is undefined

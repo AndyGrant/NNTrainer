@@ -24,6 +24,9 @@
 #include "trainer.h"
 #include "vector.h"
 
+/// Activation and BackProp function utilities. These all take
+/// a float. For each Activation, there is a BackProp function
+
 float relu(float x) {
     return fmaxf(0.0, x);
 }

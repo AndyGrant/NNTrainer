@@ -20,6 +20,18 @@
 
 #include "types.h"
 
+/// Activation and BackProp function utilities. These all take
+/// a float. For each Activation, there is a BackProp function
+
+float relu(float x);
+float relu_prime(float x);
+
+float clipped_relu(float x);
+float clipped_relu_prime(float x);
+
+float sigmoid(float x);
+float sigmoid_prime(float x);
+
 /// Activation functions. These functions are all matching
 /// >> typedef void (*Activation) (const Vector*, Vector*);
 

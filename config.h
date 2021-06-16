@@ -26,7 +26,7 @@
 static const int   NSAMPLES    = 1024 * 1024 * 16;
 static const char  DATAFILE[]  = "training.nndata";
 
-static const int   NVALIDATE   = 1024 * 1024 * 8;
+static const int   NVALIDATE   = 1024 * 1024 * 16;
 static const char  VALIDFILE[] = "validation.nndata";
 
 static const int   MAX_INPUTS  = 43850;
@@ -39,10 +39,10 @@ static const char  NNWEIGHTS[] = "";
 static const float SIGM_COEFF = 2.42 / 400.00;
 
 static const Layer ARCHITECTURE[] = {
-    {43850, 128, &activate_relu, &backprop_relu },
-    {  256,  32, &activate_relu, &backprop_relu },
-    {   32,  32, &activate_relu, &backprop_relu },
-    {   32,   1, &activate_null, &backprop_null },
+    {43850, 256, &activate_relu,    &backprop_relu    },
+    {  512,  32, &activate_relu,    &backprop_relu    },
+    {   32,  32, &activate_relu,    &backprop_relu    },
+    {   32,   1, &activate_sigmoid, &backprop_sigmoid },
 };
 
 // Choose a Loss, LossProp, and NN Architecture
