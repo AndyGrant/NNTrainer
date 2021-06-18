@@ -54,7 +54,8 @@ typedef struct Sample {
 
 typedef struct Sample {
     uint64_t occupied;   // 8-byte occupancy bitboard ( No Kings )
-    float    label;      // 4-byte float for the target label
+    int16_t  eval;       // 2-byte int for the target evaluation
+    uint8_t  result;     // 1-byte int for result. { L=0, D=1, W=2 }
     uint8_t  turn;       // 1-byte int for the side-to-move flag
     uint8_t  wking;      // 1-byte int for the White King Square
     uint8_t  bking;      // 1-byte int for the Black King Square

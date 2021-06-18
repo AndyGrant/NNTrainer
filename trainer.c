@@ -316,10 +316,11 @@ void load_sample(FILE *fin, Sample *sample) {
 
     int16_t eval;
     uint64_t pieces;
-    uint8_t turn, N, wksq, bksq, packed[16];
+    uint8_t result, turn, N, wksq, bksq, packed[16];
 
     fread(&pieces, sizeof(uint64_t), 1, fin);
     fread(&eval,   sizeof(int16_t ), 1, fin);
+    fread(&result, sizeof(uint8_t ), 1, fin);
     fread(&turn,   sizeof(uint8_t ), 1, fin);
     fread(&wksq,   sizeof(uint8_t ), 1, fin);
     fread(&bksq,   sizeof(uint8_t ), 1, fin);
@@ -361,7 +362,8 @@ void load_sample(FILE *fin, Sample *sample) {
         if (pt == KING) { sample->occupied ^= 1ull << sq; j--; }
     }
 
-    sample->label = sample->turn ? sigmoid(-eval) : sigmoid(eval);
+    sample->eval   = sample->turn ? -eval : eval;
+    sample->result = sample->turn ? 2 - result : result;
 
 #endif
 

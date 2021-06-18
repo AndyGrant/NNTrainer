@@ -102,11 +102,13 @@ void backprop_null(float *dlossdz, const Vector *vector) {
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
 float l2_one_neuron_loss(const Sample *sample, const Vector *outputs) {
-    return powf(sample->label - outputs->values[0], 2.0);
+    return (0.50 * powf(sigmoid(sample->eval) - outputs->values[0], 2.0))
+        +  (0.50 * powf((sample->result / 2.0) - outputs->values[0], 2.0));
 }
 
 void l2_one_neuron_lossprob(const Sample *sample, const Vector *outputs, float *dlossdz) {
-    *dlossdz = -2.0 * (sample->label - outputs->values[0]);
+    *dlossdz = -2.0 * (0.50 * (sigmoid(sample->eval) - outputs->values[0]))
+             + -2.0 * (0.50 * ((sample->result / 2.0) - outputs->values[0]));
 }
 
 // float l2_loss_phased(const Sample *sample, const Vector *outputs) {
