@@ -23,7 +23,9 @@
 #include "config.h"
 #include "types.h"
 
-#if NN_TYPE == HALFKP
+#if NN_TYPE == NORMAL
+int compute_input(const Sample *sample, int index, int square);
+#elif NN_TYPE == HALFKP
 void compute_inputs(const Sample *sample, int index, int square, int *inputs);
 int nnue_to_relative_kmap(int encoded);
 int nnue_to_relative_psqt(int encoded);

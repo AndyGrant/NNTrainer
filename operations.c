@@ -24,7 +24,19 @@
 #include "trainer.h"
 #include "vector.h"
 
-#if NN_TYPE == HALFKP
+#if NN_TYPE == NORMAL
+
+int compute_input(const Sample *sample, int index, int square) {
+
+    #define normal_encode(c, pt, sq) (64 * ((6 * (c)) + (pt)) + sq)
+
+    int piece  = nibble_decode(index, sample->packed) % 8;
+    int colour = nibble_decode(index, sample->packed) / 8;
+
+    return normal_encode(colour, piece, square);
+}
+
+#elif NN_TYPE == HALFKP
 
 static int file_of(int sq) { return sq % 8; }
 
@@ -42,7 +54,6 @@ static int relative_square(int colour, int sq) {
 
 void compute_inputs(const Sample *sample, int index, int square, int *inputs) {
 
-    #define nibble_decode(i, A) (((i) % 2) ? (A[(i)/2] & 0xF) : (A[(i)/2]) >> 4)
     #define halfkp_encode(ksq, cr, pt, sq) (640 * (ksq) + 64 * (5 * (cr) + (pt)) + sq)
 
     int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
@@ -54,20 +65,20 @@ void compute_inputs(const Sample *sample, int index, int square, int *inputs) {
     int srelsq  = relative_square( sample->turn, square);
     int nsrelsq = relative_square(!sample->turn, square);
 
-    int piece = nibble_decode(index, sample->packed) % 8;
-    int color = nibble_decode(index, sample->packed) / 8;
+    int piece  = nibble_decode(index, sample->packed) % 8;
+    int colour = nibble_decode(index, sample->packed) / 8;
 
     int saug  = 15 * (7 + rank_of( sksq) - rank_of( srelsq)) + (7 + file_of( sksq) - file_of( srelsq));
     int nsaug = 15 * (7 + rank_of(nsksq) - rank_of(nsrelsq)) + (7 + file_of(nsksq) - file_of(nsrelsq));
 
-    inputs[0] = (64 * 10 * sksq ) + (64 * (5 * (color == sample->turn) + piece)) + srelsq;
-    inputs[1] = (64 * 10 * nsksq) + (64 * (5 * (color != sample->turn) + piece)) + nsrelsq;
+    inputs[0] = (64 * 10 * sksq ) + (64 * (5 * (colour == sample->turn) + piece)) + srelsq;
+    inputs[1] = (64 * 10 * nsksq) + (64 * (5 * (colour != sample->turn) + piece)) + nsrelsq;
 
-    inputs[2] = 40960 + (225 * (5 * (color == sample->turn) + piece)) + saug;
-    inputs[3] = 40960 + (225 * (5 * (color != sample->turn) + piece)) + nsaug;
+    inputs[2] = 40960 + (225 * (5 * (colour == sample->turn) + piece)) + saug;
+    inputs[3] = 40960 + (225 * (5 * (colour != sample->turn) + piece)) + nsaug;
 
-    inputs[4] = 40960 + 2250 + 64 * (5 * (color == sample->turn) + piece) + srelsq;
-    inputs[5] = 40960 + 2250 + 64 * (5 * (color != sample->turn) + piece) + nsrelsq;
+    inputs[4] = 40960 + 2250 + 64 * (5 * (colour == sample->turn) + piece) + srelsq;
+    inputs[5] = 40960 + 2250 + 64 * (5 * (colour != sample->turn) + piece) + nsrelsq;
 
     #undef nibble_encode
     #undef halfkp_encode
@@ -132,9 +143,15 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
 
     set_vector(output, bias->values);
 
-    for (int i = 0; i < sample->length; i++)
+    uint64_t bb = sample->occupied;
+
+    for (int i = 0; bb != 0ull; i++) {
+
+        int input = compute_input(sample, i, poplsb(&bb));
+
         for (int j = 0; j < matrix->cols; j++)
-            output->values[j] += matrix->values[sample->indices[i] * matrix->cols + j];
+            output->values[j] += matrix->values[input * matrix->cols + j];
+    }
 
 #elif NN_TYPE == HALFKP
 
@@ -226,12 +243,18 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 
 #if NN_TYPE == NORMAL
 
+    uint64_t bb = sample->occupied;
+
     nn->backprops[0](dlossdz, eval->unactivated[0]);
     add_array_to_vector(grad->biases[0], dlossdz);
 
-    for (int i = 0; i < sample->length; i++)
+    for (int i = 0; bb != 0ull; i++) {
+
+        int index = compute_input(sample, i, poplsb(&bb));
+
         for (int j = 0; j < grad->weights[0]->cols; j++)
-            grad->weights[0]->values[sample->indices[i] * grad->weights[0]->cols + j] += dlossdz[j];
+            grad->weights[0]->values[index * grad->weights[0]->cols + j] += dlossdz[j];
+    }
 
 #elif NN_TYPE == HALFKP
 

@@ -51,3 +51,8 @@ typedef struct Layer {
     Activation activation;
     BackProp backprop;
 } Layer;
+
+/// Compression / Decompression for Packed data
+
+#define nibble_decode(i, A) (((i) % 2) ? (A[(i)/2] & 0xF) : (A[(i)/2]) >> 4)
+#define nibble_encode(i, A, cp) (A[(i)/2] |= (((i) % 2) ? (cp) : (cp << 4)))

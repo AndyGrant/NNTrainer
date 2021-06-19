@@ -45,9 +45,10 @@ void load_network(Network *nn, const char *fname);
 #if NN_TYPE == NORMAL
 
 typedef struct Sample {
-    float label;
-    int8_t length;
-    uint16_t indices[32];
+    uint64_t occupied;   // 8-byte occupancy bitboard ( All Pieces )
+    int16_t  eval;       // 2-byte int for the target evaluation
+    uint8_t  result;     // 1-byte int for result. { L=0, D=1, W=2 }
+    uint8_t  packed[16]; // 1-byte int per two pieces
 } Sample;
 
 #elif NN_TYPE == HALFKP

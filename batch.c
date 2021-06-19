@@ -48,8 +48,10 @@ static void insert_indices(uint16_t *array, int *length, Sample *sample) {
 
 #if NN_TYPE == NORMAL
 
-    for (int i = 0; i < sample->length; i++)
-        insert_value(array, length, sample->indices[i]);
+    uint64_t bb = sample->occupied;
+
+    for (int i = 0; bb != 0ull; i++)
+        insert_value(array, length, compute_input(sample, i, poplsb(&bb)));
 
 #elif NN_TYPE == HALFKP
 

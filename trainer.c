@@ -327,24 +327,14 @@ void load_sample(FILE *fin, Sample *sample) {
     fread(&N,      sizeof(uint8_t ), 1, fin);
     fread(packed,  sizeof(uint8_t ), (N + 1) / 2, fin);
 
-    #define nibble_decode(i, A) (((i) % 2) ? (A[(i)/2] & 0xF) : (A[(i)/2]) >> 4)
-    #define nibble_encode(i, A, cp) (A[(i)/2] |= (((i) % 2) ? (cp) : (cp << 4)))
-    #define normal_encode(c, pt, sq) (64 * ((6 * (c)) + (pt)) + sq)
-
 #if NN_TYPE == NORMAL
 
-    sample->label  = sigmoid(eval);
-    sample->length = 0;
+    sample->occupied = pieces;
+    sample->eval     = eval;
+    sample->result   = result;
 
-    for (int i = 0; pieces; i++) {
-
-        uint8_t enc = nibble_decode(i, packed);
-
-        int sq = poplsb(&pieces);
-        int c  = enc / 8, pt = enc % 8;
-
-        sample->indices[sample->length++] = normal_encode(c, pt, sq);
-    }
+    for (int i = 0; pieces != 0ull; i++, poplsb(&pieces))
+        nibble_encode(i, sample->packed, nibble_decode(i, packed));
 
 #elif NN_TYPE == HALFKP
 
@@ -366,10 +356,6 @@ void load_sample(FILE *fin, Sample *sample) {
     sample->result = sample->turn ? 2 - result : result;
 
 #endif
-
-    #undef nibble_decode
-    #undef nibble_encode
-    #undef normal_encode
  }
 
 /**************************************************************************************************************/
