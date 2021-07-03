@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <math.h>
 #include <omp.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +42,10 @@
 int NTHREADS;
 
 #if NN_TYPE == HALFKP
+
+Gradient *L0Gradient;
+
+pthread_mutex_t *L0Locks;
 
 void collapse_network(Network *nn) {
 
@@ -158,6 +163,16 @@ int main() {
 
     for (int i = 0; i < NTHREADS; i++)
         grads[i] = create_gradient(nn);
+
+    #if NN_TYPE == HALFKP
+
+        L0Gradient = create_gradient(nn);
+
+        L0Locks = malloc(sizeof(pthread_mutex_t) * 40960);
+        for (int i = 0; i < 40960; i++)
+            L0Locks[i] = PTHREAD_MUTEX_INITIALIZER;
+
+    #endif
 
     for (int epoch = 0; epoch < 25000; epoch++) {
 
@@ -387,35 +402,24 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
 
         int start = batch->indices[idx] * nn->weights[0]->cols;
 
-        if (USE_AVX2 && nn->weights[0]->cols % 8 == 0) {
+        #if NN_TYPE == NORMAL
+
             for (int i = start; i < start + nn->weights[0]->cols; i += 8)
-                avx2_update_weights(opt, nn, grads, 0, i);
-        }
+                avx2_update_weights(opt, nn, grads, 0, i, NTHREADS);
 
-        else {
+        #endif
 
-            for (int i = start; i < start + nn->weights[0]->cols; i++) {
+        #if NN_TYPE == HALFKP
 
-                const float true_grad = accumulate_grad_weight(grads, 0, i) / BATCHSIZE;
+            if (batch->indices[idx] >= 40960)
+                for (int i = start; i < start + nn->weights[0]->cols; i += 8)
+                    avx2_update_weights(opt, nn, grads, 0, i, NTHREADS);
 
-                opt->momentum->weights[0]->values[i]
-                    = (BETA_1 * opt->momentum->weights[0]->values[i])
-                    + (1 - BETA_1) * true_grad;
+            if (batch->indices[idx] < 40960)
+                for (int i = start; i < start + nn->weights[0]->cols; i += 8)
+                    avx2_update_weights(opt, nn, &L0Gradient, 0, i, 1);
 
-                opt->velocity->weights[0]->values[i]
-                    = (BETA_2 * opt->velocity->weights[0]->values[i])
-                    + (1 - BETA_2) * pow(true_grad, 2.0);
-
-                nn->weights[0]->values[i] -= LEARNRATE * opt->momentum->weights[0]->values[i]
-                                           * (1.0 / (1e-8 + sqrt(opt->velocity->weights[0]->values[i])));
-            }
-        }
-    }
-
-    if (!USE_AVX2 || nn->weights[0]->cols % 8 != 0) {
-        #pragma omp parallel for schedule(static) num_threads(NTHREADS)
-        for (int i = 0; i < NTHREADS; i++)
-            zero_matrix(grads[i]->weights[0]);
+        #endif
     }
 
     for (int layer = 1; layer < nn->layers; layer++) {

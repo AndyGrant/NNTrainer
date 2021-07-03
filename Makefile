@@ -19,8 +19,8 @@ SRC	 = *.c
 LIBS = -fopenmp -lm
 
 WFLAGS = -Wall -Wextra -Wshadow -std=gnu11
-CFLAGS = -O3 -flto -ffast-math -mfma -march=native -DNDEBUG
-PFLAGS = -O0 -p -pg -ffast-math -mfma -march=native -DNDEBUG
+CFLAGS = -O3 -flto -ffast-math -mfma -march=native -DNDEBUG -lpthread
+PFLAGS = -O0 -p -pg -ffast-math -mfma -march=native -DNDEBUG -lpthread
 
 NETDIR := $(shell mkdir -p Networks)
 

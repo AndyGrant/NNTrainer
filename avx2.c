@@ -27,9 +27,7 @@
 #include "types.h"
 #include "vector.h"
 
-extern int NTHREADS;
-
-void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index) {
+void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index, int chunks) {
 
     const __m256 beta1_normal = _mm256_set1_ps(BETA_1);
     const __m256 beta1_minus  = _mm256_set1_ps(1.0 - BETA_1);
@@ -45,7 +43,7 @@ void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int laye
     /// Sum up all of the per-thread Gradients
 
     __m256 partial = _mm256_load_ps(&grads[0]->weights[layer]->values[index]);
-    for (int i = 1; i < NTHREADS; i++)
+    for (int i = 1; i < chunks; i++)
         partial = _mm256_add_ps(partial, _mm256_load_ps(&grads[i]->weights[layer]->values[index]));
 
     const __m256 accumulated = _mm256_div_ps(partial, batchsize);
@@ -85,6 +83,6 @@ void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int laye
 
     /// Clear the Gradient's for the next batch
 
-    for (int i = 0; i < NTHREADS; i++)
+    for (int i = 0; i < chunks; i++)
         _mm256_store_ps(&grads[i]->weights[layer]->values[index], zero);
 }

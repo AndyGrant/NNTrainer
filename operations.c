@@ -16,6 +16,8 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <pthread.h>
+
 #include "config.h"
 #include "evaluator.h"
 #include "gradient.h"
@@ -23,6 +25,7 @@
 #include "operations.h"
 #include "trainer.h"
 #include "vector.h"
+
 
 #if NN_TYPE == NORMAL
 
@@ -36,7 +39,13 @@ int compute_input(const Sample *sample, int index, int square) {
     return normal_encode(colour, piece, square);
 }
 
-#elif NN_TYPE == HALFKP
+#endif
+
+#if NN_TYPE == HALFKP
+
+extern pthread_mutex_t *L0Locks;
+
+extern Gradient *L0Gradient;
 
 static int file_of(int sq) { return sq % 8; }
 
@@ -269,9 +278,17 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 
         compute_inputs(sample, i, poplsb(&bb), inputs);
 
+        pthread_mutex_lock(&L0Locks[inputs[0]]);
+        for (int j = 0; j < grad->weights[0]->cols; j++)
+            L0Gradient->weights[0]->values[inputs[0] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
+        pthread_mutex_unlock(&L0Locks[inputs[0]]);
+
+        pthread_mutex_lock(&L0Locks[inputs[1]]);
+        for (int j = 0; j < grad->weights[0]->cols; j++)
+            L0Gradient->weights[0]->values[inputs[1] * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+        pthread_mutex_unlock(&L0Locks[inputs[1]]);
+
         for (int j = 0; j < grad->weights[0]->cols; j++) {
-            grad->weights[0]->values[inputs[0] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
-            grad->weights[0]->values[inputs[1] * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
             grad->weights[0]->values[inputs[2] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
             grad->weights[0]->values[inputs[3] * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
             grad->weights[0]->values[inputs[4] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
