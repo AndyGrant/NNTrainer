@@ -37,8 +37,6 @@
 #include "trainer.h"
 #include "vector.h"
 
-#define USE_AVX2 1
-
 int NTHREADS;
 
 #if NN_TYPE == HALFKP
@@ -138,7 +136,7 @@ int main() {
     // return 1;
 
     setvbuf(stdout, NULL, _IONBF, 0);
-    NTHREADS = omp_get_max_threads();
+    NTHREADS = 1; // omp_get_max_threads();
     printf("Found %d Threads to train with\n", NTHREADS);
 
     const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);
@@ -416,8 +414,8 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
                     avx2_update_weights(opt, nn, grads, 0, i, NTHREADS);
 
             if (batch->indices[idx] < 40960)
-                for (int i = start; i < start + nn->weights[0]->cols; i += 8)
-                    avx2_update_weights(opt, nn, &L0Gradient, 0, i, 1);
+                for (int i = start; i < start + nn->weights[0]->cols; i += 64)
+                    avx2_update_8x8(opt, nn, &L0Gradient, 0, i);
 
         #endif
     }
@@ -430,17 +428,17 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
         #pragma omp parallel for schedule(static) num_threads(NTHREADS)
         for (int i = 0; i < rows * cols; i++) {
 
-            const float true_grad = accumulate_grad_weight(grads, layer, i) / BATCHSIZE;
+            const float true_grad = accumulate_grad_weight(grads, layer, i);
 
             opt->momentum->weights[layer]->values[i]
                 = (BETA_1 * opt->momentum->weights[layer]->values[i])
-                + (1 - BETA_1) * true_grad;
+                + ((1 - BETA_1) * LEARNRATE) * true_grad;
 
             opt->velocity->weights[layer]->values[i]
                 = (BETA_2 * opt->velocity->weights[layer]->values[i])
                 + (1 - BETA_2) * powf(true_grad, 2.0);
 
-            nn->weights[layer]->values[i] -= LEARNRATE * opt->momentum->weights[layer]->values[i]
+            nn->weights[layer]->values[i] -= opt->momentum->weights[layer]->values[i]
                                            * (1.0 / (1e-8 + sqrtf(opt->velocity->weights[layer]->values[i])));
         }
 
@@ -454,17 +452,17 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
         #pragma omp parallel for schedule(static) num_threads(NTHREADS)
         for (int i = 0; i < nn->biases[layer]->length; i++) {
 
-            const float true_grad = accumulate_grad_bias(grads, layer, i) / BATCHSIZE;
+            const float true_grad = accumulate_grad_bias(grads, layer, i);
 
             opt->momentum->biases[layer]->values[i]
                 = (BETA_1 * opt->momentum->biases[layer]->values[i])
-                + (1 - BETA_1) * true_grad;
+                + ((1 - BETA_1) * LEARNRATE) * true_grad;
 
             opt->velocity->biases[layer]->values[i]
                 = (BETA_2 * opt->velocity->biases[layer]->values[i])
                 + (1 - BETA_2) * powf(true_grad, 2.0);
 
-            nn->biases[layer]->values[i] -= LEARNRATE * opt->momentum->biases[layer]->values[i]
+            nn->biases[layer]->values[i] -= opt->momentum->biases[layer]->values[i]
                                           * (1.0 / (1e-8 + sqrtf(opt->velocity->biases[layer]->values[i])));
         }
 

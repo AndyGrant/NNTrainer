@@ -19,3 +19,4 @@
 #include "types.h"
 
 void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index, int chunks);
+void avx2_update_8x8(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index);
