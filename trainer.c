@@ -170,7 +170,7 @@ int main() {
 
         L0Locks = malloc(sizeof(pthread_mutex_t) * 40960);
         for (int i = 0; i < 40960; i++)
-            L0Locks[i] = PTHREAD_MUTEX_INITIALIZER;
+            pthread_mutex_init(&L0Locks[i], NULL);
 
     #endif
 
