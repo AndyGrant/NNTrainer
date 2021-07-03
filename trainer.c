@@ -136,7 +136,7 @@ int main() {
     // return 1;
 
     setvbuf(stdout, NULL, _IONBF, 0);
-    NTHREADS = 1; // omp_get_max_threads();
+    NTHREADS = omp_get_max_threads();
     printf("Found %d Threads to train with\n", NTHREADS);
 
     const size_t length = sizeof(ARCHITECTURE) / sizeof(Layer);

@@ -23,10 +23,10 @@
 #include "activate.h"
 #include "types.h"
 
-static const int   NSAMPLES    = 1024 * 1024 * 1;
+static const int   NSAMPLES    = 1024 * 1024 * 16;
 static const char  DATAFILE[]  = "training.nndata";
 
-static const int   NVALIDATE   = 1024 * 1024 * 1;
+static const int   NVALIDATE   = 1024 * 1024 * 16;
 static const char  VALIDFILE[] = "validation.nndata";
 
 static const int   MAX_INPUTS  = 43850;
