@@ -38,11 +38,12 @@
 #include "vector.h"
 
 int NTHREADS;
+uint64_t current_iteration;
+uint64_t last_touched_iteration[MAX_INPUTS];
 
 #if NN_TYPE == HALFKP
 
 Gradient *L0Gradient;
-
 pthread_mutex_t *L0Locks;
 
 void collapse_network(Network *nn) {
@@ -165,8 +166,8 @@ int main() {
     #if NN_TYPE == HALFKP
 
         L0Gradient = create_gradient(nn);
+        L0Locks    = malloc(sizeof(pthread_mutex_t) * 40960);
 
-        L0Locks = malloc(sizeof(pthread_mutex_t) * 40960);
         for (int i = 0; i < 40960; i++)
             pthread_mutex_init(&L0Locks[i], NULL);
 
@@ -180,6 +181,8 @@ int main() {
         /// Train by iterating over each of the Training Samples
 
         for (int batch = 0; batch < NSAMPLES / BATCHSIZE; batch++) {
+
+            current_iteration++;
 
             #pragma omp parallel for schedule(static, BATCHSIZE / NTHREADS) num_threads(NTHREADS) reduction(+:loss)
             for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
@@ -398,12 +401,14 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
     #pragma omp parallel for schedule(static) num_threads(NTHREADS)
     for (int idx = 0; idx < batch->inputs; idx++) {
 
-        int start = batch->indices[idx] * nn->weights[0]->cols;
+        const int start = batch->indices[idx] * nn->weights[0]->cols;
+        const uint64_t last = last_touched_iteration[batch->indices[idx]];
+        const uint64_t since_last = current_iteration - last;
 
         #if NN_TYPE == NORMAL
 
             for (int i = start; i < start + nn->weights[0]->cols; i += 8)
-                avx2_update_weights(opt, nn, grads, 0, i, NTHREADS);
+                avx2_update_weights(opt, nn, grads, 0, i, since_last);
 
         #endif
 
@@ -411,13 +416,15 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
 
             if (batch->indices[idx] >= 40960)
                 for (int i = start; i < start + nn->weights[0]->cols; i += 8)
-                    avx2_update_weights(opt, nn, grads, 0, i, NTHREADS);
+                    avx2_update_weights(opt, nn, grads, 0, i, since_last);
 
             if (batch->indices[idx] < 40960)
                 for (int i = start; i < start + nn->weights[0]->cols; i += 64)
-                    avx2_update_8x8(opt, nn, &L0Gradient, 0, i);
+                    avx2_update_8x8(opt, nn, &L0Gradient, 0, i, since_last);
 
         #endif
+
+        last_touched_iteration[batch->indices[idx]] = current_iteration;
     }
 
     for (int layer = 1; layer < nn->layers; layer++) {

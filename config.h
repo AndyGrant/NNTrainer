@@ -29,9 +29,9 @@ static const char  DATAFILE[]  = "training.nndata";
 static const int   NVALIDATE   = 1024 * 1024 * 16;
 static const char  VALIDFILE[] = "validation.nndata";
 
-static const int   MAX_INPUTS  = 43850;
-static const int   BATCHSIZE   = 16384;
-static const float LEARNRATE   = 0.001;
+#define MAX_INPUTS 43850
+#define BATCHSIZE  16384
+#define LEARNRATE  0.001
 
 static const bool  USE_WEIGHTS = false;
 static const char  NNWEIGHTS[] = "";
