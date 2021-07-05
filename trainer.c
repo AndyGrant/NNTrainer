@@ -309,16 +309,15 @@ void load_network(Network *nn, const char *fname) {
 
 Sample *load_samples(const char *fname, int length) {
 
-    Sample *samples = calloc(length, sizeof(Sample));
+    Sample *samples = malloc(sizeof(Sample) * length);
     printf("Allocated %.2fMB for Samples\n",
         (float)(sizeof(Sample) * length) / (1024 * 1024));
 
     FILE *fin = fopen(fname, "rb");
 
-    for (int i = 0; i < length; i++) {
-        load_sample(fin, &samples[i]);
-        if (i == length - 1 || i % (1024*256) == 0)
-            printf("\rLoaded %d of %d Samples", i+1, length);
+    for (int i = 0; i < length; i += 1024 * 1024) {
+        fread(&samples[i], sizeof(Sample), 1024 * 1024, fin);
+        printf("\rLoaded %d of %d Samples", i + 1024 * 1024, length);
     }
 
     printf("\nFinished Reading %s\n\n", fname);
@@ -327,52 +326,6 @@ Sample *load_samples(const char *fname, int length) {
 
     return samples;
 }
-
-void load_sample(FILE *fin, Sample *sample) {
-
-    int16_t eval;
-    uint64_t pieces;
-    uint8_t result, turn, N, wksq, bksq, packed[16];
-
-    fread(&pieces, sizeof(uint64_t), 1, fin);
-    fread(&eval,   sizeof(int16_t ), 1, fin);
-    fread(&result, sizeof(uint8_t ), 1, fin);
-    fread(&turn,   sizeof(uint8_t ), 1, fin);
-    fread(&wksq,   sizeof(uint8_t ), 1, fin);
-    fread(&bksq,   sizeof(uint8_t ), 1, fin);
-    fread(&N,      sizeof(uint8_t ), 1, fin);
-    fread(packed,  sizeof(uint8_t ), (N + 1) / 2, fin);
-
-#if NN_TYPE == NORMAL
-
-    sample->occupied = pieces;
-    sample->eval     = eval;
-    sample->result   = result;
-
-    for (int i = 0; pieces != 0ull; i++, poplsb(&pieces))
-        nibble_encode(i, sample->packed, nibble_decode(i, packed));
-
-#elif NN_TYPE == HALFKP
-
-    sample->occupied = pieces;
-    sample->turn     = turn;
-    sample->wking    = wksq;
-    sample->bking    = bksq;
-
-    for (int i = 0, j = 0; pieces != 0ull; i++, j++) {
-
-        uint8_t cpdata = nibble_decode(i, packed);
-        int sq = poplsb(&pieces), pt = cpdata % 8;
-
-        if (pt != KING) nibble_encode(j, sample->packed, cpdata);
-        if (pt == KING) { sample->occupied ^= 1ull << sq; j--; }
-    }
-
-    sample->eval   = sample->turn ? -eval : eval;
-    sample->result = sample->turn ? 2 - result : result;
-
-#endif
- }
 
 /**************************************************************************************************************/
 
