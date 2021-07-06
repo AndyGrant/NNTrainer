@@ -315,9 +315,9 @@ Sample *load_samples(const char *fname, int length) {
 
     FILE *fin = fopen(fname, "rb");
 
-    for (int i = 0; i < length; i += 1024 * 1024) {
-        fread(&samples[i], sizeof(Sample), 1024 * 1024, fin);
-        printf("\rLoaded %d of %d Samples", i + 1024 * 1024, length);
+    for (int i = 0; i < length; i += LOAD_SIZE) {
+        fread(&samples[i], sizeof(Sample), LOAD_SIZE, fin);
+        printf("\rLoaded %d of %d Samples", i + LOAD_SIZE, length);
     }
 
     printf("\nFinished Reading %s\n\n", fname);

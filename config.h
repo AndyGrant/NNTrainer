@@ -23,24 +23,25 @@
 #include "activate.h"
 #include "types.h"
 
+#define MAX_INPUTS 43850
+#define BATCHSIZE  16384
+#define LEARNRATE  0.001
+
 static const int   NSAMPLES    = 1024 * 1024 * 95;
 static const char  DATAFILE[]  = "s9.100M.nndata";
 
 static const int   NVALIDATE   = 1024 * 1024 * 95;
 static const char  VALIDFILE[] = "s9.100M.nndata";
 
-#define MAX_INPUTS 43850
-#define BATCHSIZE  16384
-#define LEARNRATE  0.001
-
 static const bool  USE_WEIGHTS = false;
 static const char  NNWEIGHTS[] = "";
 
+static const int   LOAD_SIZE  = 1024 * 1024;
 static const float SIGM_COEFF = 2.42 / 400.00;
 
 static const Layer ARCHITECTURE[] = {
-    {43850,  64, &activate_relu,    &backprop_relu    },
-    {  128,  32, &activate_relu,    &backprop_relu    },
+    {43850, 256, &activate_relu,    &backprop_relu    },
+    {  512,  32, &activate_relu,    &backprop_relu    },
     {   32,  32, &activate_relu,    &backprop_relu    },
     {   32,   1, &activate_sigmoid, &backprop_sigmoid },
 };
