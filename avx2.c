@@ -17,6 +17,7 @@
 */
 
 #include <immintrin.h>
+#include <math.h>
 
 #include "avx2.h"
 #include "config.h"
@@ -27,21 +28,25 @@
 #include "types.h"
 #include "vector.h"
 
-void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index, int chunks) {
+extern int NTHREADS;
+extern uint64_t current_iteration;
+extern uint64_t last_touched_iteration[MAX_INPUTS];
+
+void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index, int since_last) {
 
     const __m256 learnrate    = _mm256_set1_ps(LEARNRATE);
     const __m256 zero         = _mm256_setzero_ps();
 
-    const __m256 beta1_normal = _mm256_set1_ps(BETA_1);
+    const __m256 beta1_normal = _mm256_set1_ps(pow(BETA_1, since_last));
     const __m256 beta1_minus  = _mm256_mul_ps(learnrate, _mm256_set1_ps(1.0 - BETA_1));
 
-    const __m256 beta2_normal = _mm256_set1_ps(BETA_2);
+    const __m256 beta2_normal = _mm256_set1_ps(pow(BETA_2, since_last));
     const __m256 beta2_minus  = _mm256_set1_ps(1.0 - BETA_2);
 
     /// Sum up all of the per-thread Gradients
 
     __m256 accumulated = _mm256_load_ps(&grads[0]->weights[layer]->values[index]);
-    for (int i = 1; i < chunks; i++)
+    for (int i = 1; i < NTHREADS; i++)
         accumulated = _mm256_add_ps(accumulated, _mm256_load_ps(&grads[i]->weights[layer]->values[index]));
 
     const __m256 accumulated2 = _mm256_mul_ps(accumulated, accumulated);
@@ -78,20 +83,20 @@ void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int laye
 
     /// Clear the Gradient's for the next batch
 
-    for (int i = 0; i < chunks; i++)
+    for (int i = 0; i < NTHREADS; i++)
         _mm256_store_ps(&grads[i]->weights[layer]->values[index], zero);
 }
 
-void avx2_update_8x8(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index) {
+void avx2_update_8x8(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index, int since_last) {
 
     const __m256 learnrate    = _mm256_set1_ps(LEARNRATE);
     const __m256 zero         = _mm256_setzero_ps();
     const __m256 epsilon      = _mm256_set1_ps(1e-8);
 
-    const __m256 beta1_normal = _mm256_set1_ps(BETA_1);
+    const __m256 beta1_normal = _mm256_set1_ps(pow(BETA_1, since_last));
     const __m256 beta1_minus  = _mm256_mul_ps(learnrate, _mm256_set1_ps(1.0 - BETA_1));
 
-    const __m256 beta2_normal = _mm256_set1_ps(BETA_2);
+    const __m256 beta2_normal = _mm256_set1_ps(pow(BETA_2, since_last));
     const __m256 beta2_minus  = _mm256_set1_ps(1.0 - BETA_2);
 
     __m256* const gradients  = (__m256*) &grads[0]->weights[layer]->values[index];

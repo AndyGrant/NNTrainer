@@ -38,11 +38,12 @@
 #include "vector.h"
 
 int NTHREADS;
+uint64_t current_iteration;
+uint64_t last_touched_iteration[MAX_INPUTS];
 
 #if NN_TYPE == HALFKP
 
 Gradient *L0Gradient;
-
 pthread_mutex_t *L0Locks;
 
 void collapse_network(Network *nn) {
@@ -165,8 +166,8 @@ int main() {
     #if NN_TYPE == HALFKP
 
         L0Gradient = create_gradient(nn);
+        L0Locks    = malloc(sizeof(pthread_mutex_t) * 40960);
 
-        L0Locks = malloc(sizeof(pthread_mutex_t) * 40960);
         for (int i = 0; i < 40960; i++)
             pthread_mutex_init(&L0Locks[i], NULL);
 
@@ -180,6 +181,8 @@ int main() {
         /// Train by iterating over each of the Training Samples
 
         for (int batch = 0; batch < NSAMPLES / BATCHSIZE; batch++) {
+
+            current_iteration++;
 
             #pragma omp parallel for schedule(static, BATCHSIZE / NTHREADS) num_threads(NTHREADS) reduction(+:loss)
             for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
@@ -306,16 +309,15 @@ void load_network(Network *nn, const char *fname) {
 
 Sample *load_samples(const char *fname, int length) {
 
-    Sample *samples = calloc(length, sizeof(Sample));
+    Sample *samples = malloc(sizeof(Sample) * length);
     printf("Allocated %.2fMB for Samples\n",
         (float)(sizeof(Sample) * length) / (1024 * 1024));
 
     FILE *fin = fopen(fname, "rb");
 
-    for (int i = 0; i < length; i++) {
-        load_sample(fin, &samples[i]);
-        if (i == length - 1 || i % (1024*256) == 0)
-            printf("\rLoaded %d of %d Samples", i+1, length);
+    for (int i = 0; i < length; i += LOAD_SIZE) {
+        fread(&samples[i], sizeof(Sample), LOAD_SIZE, fin);
+        printf("\rLoaded %d of %d Samples", i + LOAD_SIZE, length);
     }
 
     printf("\nFinished Reading %s\n\n", fname);
@@ -324,52 +326,6 @@ Sample *load_samples(const char *fname, int length) {
 
     return samples;
 }
-
-void load_sample(FILE *fin, Sample *sample) {
-
-    int16_t eval;
-    uint64_t pieces;
-    uint8_t result, turn, N, wksq, bksq, packed[16];
-
-    fread(&pieces, sizeof(uint64_t), 1, fin);
-    fread(&eval,   sizeof(int16_t ), 1, fin);
-    fread(&result, sizeof(uint8_t ), 1, fin);
-    fread(&turn,   sizeof(uint8_t ), 1, fin);
-    fread(&wksq,   sizeof(uint8_t ), 1, fin);
-    fread(&bksq,   sizeof(uint8_t ), 1, fin);
-    fread(&N,      sizeof(uint8_t ), 1, fin);
-    fread(packed,  sizeof(uint8_t ), (N + 1) / 2, fin);
-
-#if NN_TYPE == NORMAL
-
-    sample->occupied = pieces;
-    sample->eval     = eval;
-    sample->result   = result;
-
-    for (int i = 0; pieces != 0ull; i++, poplsb(&pieces))
-        nibble_encode(i, sample->packed, nibble_decode(i, packed));
-
-#elif NN_TYPE == HALFKP
-
-    sample->occupied = pieces;
-    sample->turn     = turn;
-    sample->wking    = wksq;
-    sample->bking    = bksq;
-
-    for (int i = 0, j = 0; pieces != 0ull; i++, j++) {
-
-        uint8_t cpdata = nibble_decode(i, packed);
-        int sq = poplsb(&pieces), pt = cpdata % 8;
-
-        if (pt != KING) nibble_encode(j, sample->packed, cpdata);
-        if (pt == KING) { sample->occupied ^= 1ull << sq; j--; }
-    }
-
-    sample->eval   = sample->turn ? -eval : eval;
-    sample->result = sample->turn ? 2 - result : result;
-
-#endif
- }
 
 /**************************************************************************************************************/
 
@@ -398,12 +354,14 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
     #pragma omp parallel for schedule(static) num_threads(NTHREADS)
     for (int idx = 0; idx < batch->inputs; idx++) {
 
-        int start = batch->indices[idx] * nn->weights[0]->cols;
+        const int start = batch->indices[idx] * nn->weights[0]->cols;
+        const uint64_t last = last_touched_iteration[batch->indices[idx]];
+        const uint64_t since_last = current_iteration - last;
 
         #if NN_TYPE == NORMAL
 
             for (int i = start; i < start + nn->weights[0]->cols; i += 8)
-                avx2_update_weights(opt, nn, grads, 0, i, NTHREADS);
+                avx2_update_weights(opt, nn, grads, 0, i, since_last);
 
         #endif
 
@@ -411,13 +369,15 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
 
             if (batch->indices[idx] >= 40960)
                 for (int i = start; i < start + nn->weights[0]->cols; i += 8)
-                    avx2_update_weights(opt, nn, grads, 0, i, NTHREADS);
+                    avx2_update_weights(opt, nn, grads, 0, i, since_last);
 
             if (batch->indices[idx] < 40960)
                 for (int i = start; i < start + nn->weights[0]->cols; i += 64)
-                    avx2_update_8x8(opt, nn, &L0Gradient, 0, i);
+                    avx2_update_8x8(opt, nn, &L0Gradient, 0, i, since_last);
 
         #endif
+
+        last_touched_iteration[batch->indices[idx]] = current_iteration;
     }
 
     for (int layer = 1; layer < nn->layers; layer++) {

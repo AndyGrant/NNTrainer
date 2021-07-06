@@ -89,7 +89,6 @@ void compute_inputs(const Sample *sample, int index, int square, int *inputs) {
     inputs[4] = 40960 + 2250 + 64 * (5 * (colour == sample->turn) + piece) + srelsq;
     inputs[5] = 40960 + 2250 + 64 * (5 * (colour != sample->turn) + piece) + nsrelsq;
 
-    #undef nibble_encode
     #undef halfkp_encode
 }
 
