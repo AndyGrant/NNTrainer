@@ -27,11 +27,11 @@
 #define BATCHSIZE  16384
 #define LEARNRATE  0.001
 
-static const int   NSAMPLES    = 1024 * 1024 * 95;
-static const char  DATAFILE[]  = "s9.100M.nndata";
+static const int   NSAMPLES    = 1024 * 1024 * 16;
+static const char  DATAFILE[]  = "training.nndata";
 
-static const int   NVALIDATE   = 1024 * 1024 * 95;
-static const char  VALIDFILE[] = "s9.100M.nndata";
+static const int   NVALIDATE   = 1024 * 1024 * 16;
+static const char  VALIDFILE[] = "validation.nndata";
 
 static const bool  USE_WEIGHTS = false;
 static const char  NNWEIGHTS[] = "";
@@ -45,6 +45,11 @@ static const Layer ARCHITECTURE[] = {
     {   32,  32, &activate_relu,    &backprop_relu    },
     {   32,   1, &activate_sigmoid, &backprop_sigmoid },
 };
+
+// static const Layer ARCHITECTURE[] = {
+//     {  768, 512, &activate_relu,    &backprop_relu    },
+//     {  512,  32, &activate_relu,    &backprop_sigmoid },
+// };
 
 // Choose a Loss, LossProp, and NN Architecture
 
