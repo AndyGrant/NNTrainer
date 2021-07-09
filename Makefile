@@ -9,23 +9,19 @@
 #  Ethereal is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#
 #  GNU General Public License for more details.
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 CC	 = gcc
 SRC	 = *.c
-LIBS = -fopenmp -lm
+LIBS = -fopenmp -lm -lpthread
 
 WFLAGS = -Wall -Wextra -Wshadow -std=gnu11
-CFLAGS = -O3 -flto -ffast-math -mfma -march=native -DNDEBUG -lpthread
-PFLAGS = -O0 -p -pg -ffast-math -mfma -march=native -DNDEBUG -lpthread
+CFLAGS = -O3 -flto -ffast-math -mfma -march=native -DNDEBUG
 
 NETDIR := $(shell mkdir -p Networks)
 
 default:
 	$(CC) $(SRC) $(WFLAGS) $(CFLAGS) $(LIBS)
-
-profile:
-	$(CC) $(SRC) $(WFLAGS) $(PFLAGS) $(LIBS)
