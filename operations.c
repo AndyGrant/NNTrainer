@@ -237,7 +237,7 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
 
     else {
 
-        nn->backprops[layer](dlossdz, eval->unactivated[layer]);
+        nn->backprops[layer](dlossdz, eval->unactivated[layer], eval->activated[layer]);
         add_array_to_vector(grad->biases[layer], dlossdz);
         add_array_mul_vector_to_matrix(grad->weights[layer], dlossdz, eval->activated[layer-1]);
 
@@ -253,7 +253,7 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 
     uint64_t bb = sample->occupied;
 
-    nn->backprops[0](dlossdz, eval->unactivated[0]);
+    nn->backprops[0](dlossdz, eval->unactivated[0], eval->activated[0]);
     add_array_to_vector(grad->biases[0], dlossdz);
 
     for (int i = 0; bb != 0ull; i++) {
@@ -269,7 +269,7 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
     uint64_t bb = sample->occupied;
     int inputs[6], seg1_head = 0, seg2_head = grad->weights[0]->cols;
 
-    nn->backprops[0](dlossdz, eval->unactivated[0]);
+    nn->backprops[0](dlossdz, eval->unactivated[0], eval->activated[0]);
     for (int i = 0; i < grad->biases[0]->length; i++)
         grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
 

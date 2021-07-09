@@ -41,12 +41,12 @@ void activate_sigmoid(const Vector *input, Vector *output);
 void activate_null(const Vector *input, Vector *output);
 
 /// BackProp functions. These functions are all matching
-/// >> typedef void (*BackProp) (float *dlossdz, const Vector *vector);
+/// >> typedef void (*BackProp) (float *dlossdz, const Vector *vector, const Vector *vector);
 
-void backprop_relu(float *dlossdz, const Vector *vector);
-void backprop_clipped_relu(float *dlossdz, const Vector *vector);
-void backprop_sigmoid(float *dlossdz, const Vector *vector);
-void backprop_null(float *dlossdz, const Vector *vector);
+void backprop_relu(float *dlossdz, const Vector *unactivated, const Vector *activated);
+void backprop_clipped_relu(float *dlossdz, const Vector *unactivated, const Vector *activated);
+void backprop_sigmoid(float *dlossdz, const Vector *unactivated, const Vector *activated);
+void backprop_null(float *dlossdz, const Vector *unactivated, const Vector *activated);
 
 /// Loss and LossProp functions. These functions are all matching
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);

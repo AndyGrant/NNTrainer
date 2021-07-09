@@ -76,25 +76,28 @@ void activate_null(const Vector *input, Vector *output) {
 }
 
 /// BackProp functions. These functions are all matching
-/// >>typedef void (*BackProp) (float *dlossdz, const Vector *vector);
+/// >> typedef void (*BackProp) (float *dlossdz, const Vector *vector, const Vector *vector);
 
-void backprop_relu(float *dlossdz, const Vector *vector) {
-    for (int i = 0; i < vector->length; i++)
-        dlossdz[i] *= relu_prime(vector->values[i]);
+void backprop_relu(float *dlossdz, const Vector *unactivated, const Vector *activated) {
+    (void) activated; // Not useful fpr computing derivatives
+    for (int i = 0; i < unactivated->length; i++)
+        dlossdz[i] *= relu_prime(unactivated->values[i]);
 }
 
-void backprop_clipped_relu(float *dlossdz, const Vector *vector) {
-    for (int i = 0; i < vector->length; i++)
-        dlossdz[i] *= clipped_relu_prime(vector->values[i]);
+void backprop_clipped_relu(float *dlossdz, const Vector *unactivated, const Vector *activated) {
+    (void) activated; // Not useful fpr computing derivatives
+    for (int i = 0; i < unactivated->length; i++)
+        dlossdz[i] *= clipped_relu_prime(unactivated->values[i]);
 }
 
-void backprop_sigmoid(float *dlossdz, const Vector *vector) {
-    for (int i = 0; i < vector->length; i++)
-        dlossdz[i] *= sigmoid_prime(vector->values[i]);
+void backprop_sigmoid(float *dlossdz, const Vector *unactivated, const Vector *activated) {
+    (void) activated; // Not useful fpr computing derivatives
+    for (int i = 0; i < unactivated->length; i++)
+        dlossdz[i] *= sigmoid_prime(unactivated->values[i]);
 }
 
-void backprop_null(float *dlossdz, const Vector *vector) {
-    (void) dlossdz; (void) vector;
+void backprop_null(float *dlossdz, const Vector *unactivated, const Vector *activated) {
+    (void) dlossdz; (void) unactivated; (void) activated;
 }
 
 /// Loss and LossProp functions. These functions are all matching
