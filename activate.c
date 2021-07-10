@@ -123,8 +123,6 @@ float cross_entropy_softmax_loss(const Sample *sample, const Vector *outputs) {
     for (int i = 0; i < outputs->length; i++)
         loss += -sample->label[i] * (outputs->values[i] - largest - logf(sum));
 
-    //printf("predicted: { %f, %f, %f } actual: { %f, %f, %f } loss: %f\n", outputs->values[0], outputs->values[1], outputs->values[2], sample->label[0], sample->label[1], sample->label[2], loss);
-
     return loss;
 }
 
@@ -143,8 +141,6 @@ void cross_entropy_softmax_lossprop(const Sample *sample, const Vector *outputs,
     // The softmax is exp(x - max(x)) / sum. Gradient is predicted - actual
     for (int i = 0; i < outputs->length; i++)
         dlossdz[i] = exp(outputs->values[i] - largest) / sum - sample->label[i];
-
-    //printf("predicted: { %f, %f, %f } actual: { %f, %f, %f } gradient: { %f, %f, %f }\n", outputs->values[0], outputs->values[1], outputs->values[2], sample->label[0], sample->label[1], sample->label[2], dlossdz[0], dlossdz[1], dlossdz[2]);
 }
 
 #elif DATA_TYPE == EVAL_RESULT
