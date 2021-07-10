@@ -51,7 +51,7 @@ typedef struct Sample {
     uint8_t  packed[16]; // 1-byte int per two pieces
 } Sample;
 
-#elif NN_TYPE == HALFKP
+#elif NN_TYPE == HALFKP && DATA_TYPE == EVAL_RESULT
 
 typedef struct Sample {
     uint64_t occupied;   // 8-byte occupancy bitboard ( No Kings )
@@ -63,9 +63,19 @@ typedef struct Sample {
     uint8_t  packed[15]; // 1-byte int per two non-King pieces
 } Sample;
 
+#elif NN_TYPE == HALFKP && DATA_TYPE == WDL
+
+typedef struct Sample {
+    uint64_t occupied;   // 8-byte occupancy bitboard ( No Kings )
+    float    label[3];   // 12-byte WDL vector e.g { 0.2, 0.3, 0.5 }
+    uint8_t  turn;       // 1-byte int for the side-to-move flag
+    uint8_t  wking;      // 1-byte int for the White King Square
+    uint8_t  bking;      // 1-byte int for the Black King Square
+    uint8_t  packed[15]; // 1-byte int per two non-King pieces
+} Sample;
+
 #endif
 
 Sample *load_samples(const char *fname, int length);
-void load_sample(FILE *fin, Sample *sample);
 
 void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch);

@@ -56,3 +56,4 @@ static const Layer ARCHITECTURE[] = {
 #define LOSS_FUNC     l2_one_neuron_loss
 #define LOSSPROP_FUNC l2_one_neuron_lossprop
 #define NN_TYPE       HALFKP
+#define DATA_TYPE     EVAL_RESULT

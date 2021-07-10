@@ -23,6 +23,9 @@
 #define NORMAL   0 // Normal Networks with a single Input set
 #define HALFKP   1 // Networks with 2xHalfs via Shogi-King-Piece encoding
 
+#define EVAL_RESULT 2   // Training with data that contains a game result and eval
+#define WDL         3   // Training with data that has a 3 value WDL e.g { 0.2, 0.3, 0.5 }
+
 enum { WHITE, BLACK };
 
 enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };

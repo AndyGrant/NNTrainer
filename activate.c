@@ -79,19 +79,19 @@ void activate_null(const Vector *input, Vector *output) {
 /// >> typedef void (*BackProp) (float *dlossdz, const Vector *vector, const Vector *vector);
 
 void backprop_relu(float *dlossdz, const Vector *unactivated, const Vector *activated) {
-    (void) activated; // Not useful fpr computing derivatives
+    (void) activated; // Not useful for computing derivatives
     for (int i = 0; i < unactivated->length; i++)
         dlossdz[i] *= relu_prime(unactivated->values[i]);
 }
 
 void backprop_clipped_relu(float *dlossdz, const Vector *unactivated, const Vector *activated) {
-    (void) activated; // Not useful fpr computing derivatives
+    (void) activated; // Not useful for computing derivatives
     for (int i = 0; i < unactivated->length; i++)
         dlossdz[i] *= clipped_relu_prime(unactivated->values[i]);
 }
 
 void backprop_sigmoid(float *dlossdz, const Vector *unactivated, const Vector *activated) {
-    (void) activated; // Not useful fpr computing derivatives
+    (void) activated; // Not useful for computing derivatives
     for (int i = 0; i < unactivated->length; i++)
         dlossdz[i] *= sigmoid_prime(unactivated->values[i]);
 }
@@ -104,12 +104,58 @@ void backprop_null(float *dlossdz, const Vector *unactivated, const Vector *acti
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
-float l2_one_neuron_loss(const Sample *sample, const Vector *outputs) {
+#if DATA_TYPE == WDL
+
+float cross_entropy_softmax_loss(const Sample *sample, const Vector *outputs) {
+
+    // Get the max output
+    float largest = outputs->values[0];
+    for (int i = 1; i < outputs->length; i++)
+        largest = max(largest, outputs->values[i]);
+
+    // Find the sum of exp(x - max(x))
+    float sum = 0;
+    for (int i = 0; i < outputs->length; i++)
+        sum += expf(outputs->values[i] - largest);
+
+    // Sum is the negative dot product of the label and (x - max(x) - log(sum))
+    float loss = 0;
+    for (int i = 0; i < outputs->length; i++)
+        loss += -sample->label[i] * (outputs->values[i] - largest - logf(sum));
+
+    //printf("predicted: { %f, %f, %f } actual: { %f, %f, %f } loss: %f\n", outputs->values[0], outputs->values[1], outputs->values[2], sample->label[0], sample->label[1], sample->label[2], loss);
+
+    return loss;
+}
+
+void cross_entropy_softmax_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
+
+    // Get the max output
+    float largest = outputs->values[0];
+    for (int i = 1; i < outputs->length; i++)
+        largest = max(largest, outputs->values[i]);
+
+    // Find the sum of exp(x - max(x))
+    float sum = 0;
+    for (int i = 0; i < outputs->length; i++)
+        sum += expf(outputs->values[i] - largest);
+
+    // The softmax is exp(x - max(x)) / sum. Gradient is predicted - actual
+    for (int i = 0; i < outputs->length; i++)
+        dlossdz[i] = exp(outputs->values[i] - largest) / sum - sample->label[i];
+
+    //printf("predicted: { %f, %f, %f } actual: { %f, %f, %f } gradient: { %f, %f, %f }\n", outputs->values[0], outputs->values[1], outputs->values[2], sample->label[0], sample->label[1], sample->label[2], dlossdz[0], dlossdz[1], dlossdz[2]);
+}
+
+#elif DATA_TYPE == EVAL_RESULT
+
+float mse_sigmoided_neuron_loss(const Sample *sample, const Vector *outputs) {
     return (0.50 * powf(sigmoid(sample->eval) - outputs->values[0], 2.0))
         +  (0.50 * powf((sample->result / 2.0) - outputs->values[0], 2.0));
 }
-
-void l2_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
+void mse_sigmoided_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
     *dlossdz = -2.0 * (0.50 * (sigmoid(sample->eval) - outputs->values[0]))
              + -2.0 * (0.50 * ((sample->result / 2.0) - outputs->values[0]));
 }
+
+#endif
