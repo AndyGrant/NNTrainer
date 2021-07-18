@@ -21,12 +21,9 @@
 
 #include "avx2.h"
 #include "config.h"
-#include "gradient.h"
-#include "matrix.h"
-#include "optimizer.h"
 #include "trainer.h"
 #include "types.h"
-#include "vector.h"
+#include "utils.h"
 
 extern int NTHREADS;
 extern uint64_t current_iteration;

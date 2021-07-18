@@ -29,13 +29,9 @@
 #include "activate.h"
 #include "batch.h"
 #include "config.h"
-#include "evaluator.h"
-#include "gradient.h"
-#include "matrix.h"
 #include "operations.h"
-#include "optimizer.h"
 #include "trainer.h"
-#include "vector.h"
+#include "utils.h"
 
 int NTHREADS;
 uint64_t current_iteration;

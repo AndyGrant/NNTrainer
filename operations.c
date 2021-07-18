@@ -19,12 +19,9 @@
 #include <pthread.h>
 
 #include "config.h"
-#include "evaluator.h"
-#include "gradient.h"
-#include "matrix.h"
 #include "operations.h"
 #include "trainer.h"
-#include "vector.h"
+#include "utils.h"
 
 
 #if NN_TYPE == NORMAL

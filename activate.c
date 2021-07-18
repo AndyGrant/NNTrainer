@@ -20,9 +20,8 @@
 
 #include "activate.h"
 #include "config.h"
-#include "gradient.h"
 #include "trainer.h"
-#include "vector.h"
+#include "utils.h"
 
 /// Activation and BackProp function utilities. These all take
 /// a float. For each Activation, there is a BackProp function

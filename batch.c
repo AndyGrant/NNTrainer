@@ -25,6 +25,7 @@
 #include "operations.h"
 #include "trainer.h"
 #include "types.h"
+#include "utils.h"
 
 extern int NTHREADS;
 

@@ -18,8 +18,6 @@
 
 #pragma once
 
-#include "utils.h"
-
 #define NORMAL   0 // Normal Networks with a single Input set
 #define HALFKP   1 // Networks with 2xHalfs via Shogi-King-Piece encoding
 

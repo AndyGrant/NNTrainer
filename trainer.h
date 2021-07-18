@@ -66,6 +66,5 @@ typedef struct Sample {
 #endif
 
 Sample *load_samples(const char *fname, int length);
-void load_sample(FILE *fin, Sample *sample);
 
 void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch);

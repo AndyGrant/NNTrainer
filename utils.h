@@ -23,63 +23,79 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define ALIGN64 alignas(64)
-#define INLINE static inline __attribute__((always_inline))
-#define NOINLINE __attribute__((noinline))
-
-INLINE int getlsb(uint64_t bb) {
-    assert(bb);  // lsb(0) is undefined
-    return __builtin_ctzll(bb);
-}
-
-INLINE int poplsb(uint64_t *bb) {
-    int lsb = getlsb(*bb);
-    *bb &= *bb - 1;
-    return lsb;
-}
-
 #if defined(_WIN32) || defined(_WIN64)
-
-    /// Windows Support
-
     #include <windows.h>
-
-    INLINE void* align_malloc(size_t size) {
-        return _mm_malloc(size, 64);
-    }
-
-    INLINE void align_free(void *ptr) {
-        _mm_free(ptr);
-    }
-
-    INLINE double get_time_point() {
-        return (double)(GetTickCount());
-    }
-
 #else
-
-    /// Otherwise, assume POSIX Support
-
     #include <sys/time.h>
-
-    INLINE void* align_malloc(size_t size) {
-        void *mem; return posix_memalign(&mem, 64, size) ? NULL : mem;
-    }
-
-    INLINE void align_free(void *ptr) {
-        free(ptr);
-    }
-
-    INLINE double get_time_point() {
-
-        struct timeval tv;
-        double secsInMilli, usecsInMilli;
-
-        gettimeofday(&tv, NULL);
-        secsInMilli = ((double)tv.tv_sec) * 1000;
-        usecsInMilli = tv.tv_usec / 1000;
-
-        return secsInMilli + usecsInMilli;
-    }
-
 #endif
+
+#include "types.h"
+
+#define ALIGN64 alignas(64)
+
+/// Vector Declarations
+
+typedef struct Vector {
+    int length;
+    float ALIGN64 *values;
+} Vector;
+
+Vector *create_vector(int length);
+void delete_vector(Vector *vector);
+void set_vector(Vector *vector, float *values);
+void zero_vector(Vector *vector);
+
+/// Matrix Declarations
+
+typedef struct Matrix {
+    int rows, cols;
+    float ALIGN64 *values;
+} Matrix;
+
+Matrix *create_matrix(int rows, int cols);
+void delete_matrix(Matrix *matrix);
+void zero_matrix(Matrix *matrix);
+
+/// Evaluator Declarations
+
+typedef struct Evaluator {
+    Vector **unactivated;
+    Vector **activated;
+    int layers;
+} Evaluator;
+
+Evaluator *create_evaluator(Network *nn);
+void delete_evaluator(Evaluator *eval);
+
+/// Gradient Declarations
+
+typedef struct Gradient {
+    Matrix **weights;
+    Vector **biases;
+    int layers;
+} Gradient;
+
+Gradient *create_gradient(Network *nn);
+void delete_gradient(Gradient *grad);
+void zero_gradient(Gradient *grad);
+
+/// Optimizer Declarations
+
+typedef struct Optimizer {
+    Gradient *momentum;
+    Gradient *velocity;
+} Optimizer;
+
+Optimizer *create_optimizer(Network *nn);
+void delete_optimizer(Optimizer *opt);
+
+/// Chess Bitboard Declarations
+
+int getlsb(uint64_t bb);
+int poplsb(uint64_t *bb);
+
+// Operating System Function Declarations
+
+void* align_malloc(size_t size);
+void align_free(void *ptr);
+double get_time_point();
