@@ -221,7 +221,7 @@ void evaluate_network(const Network *nn, Evaluator *eval, const Sample *sample) 
 void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample) {
 
     const Vector *outputs = eval->activated[nn->layers-1];
-    float dlossdz[outputs->length];
+    ALIGN64 float dlossdz[outputs->length];
 
     LOSSPROP_FUNC(sample, outputs, dlossdz);
     apply_backprop(nn, eval, grad, sample, dlossdz, nn->layers-1);
@@ -238,7 +238,7 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
         add_array_to_vector(grad->biases[layer], dlossdz);
         add_array_mul_vector_to_matrix(grad->weights[layer], dlossdz, eval->activated[layer-1]);
 
-        float dlossdz_d1[grad->weights[layer]->rows];
+        ALIGN64 float dlossdz_d1[grad->weights[layer]->rows];
         set_matrix_dot_array_to_array(dlossdz_d1, nn->weights[layer], dlossdz);
         apply_backprop(nn, eval, grad, sample, dlossdz_d1, layer-1);
     }
@@ -266,6 +266,9 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
     uint64_t bb = sample->occupied;
     int inputs[6], seg1_head = 0, seg2_head = grad->weights[0]->cols;
 
+    __m256 *const segm1 = (__m256*) &dlossdz[seg1_head];
+    __m256 *const segm2 = (__m256*) &dlossdz[seg2_head];
+
     nn->backprops[0](dlossdz, eval->unactivated[0], eval->activated[0]);
     for (int i = 0; i < grad->biases[0]->length; i++)
         grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
@@ -274,21 +277,35 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 
         compute_inputs(sample, i, poplsb(&bb), inputs);
 
+        __m256* grad0 = (__m256*) &L0Gradient->weights[0]->values[inputs[0] * grad->weights[0]->cols];
+        __m256* grad1 = (__m256*) &L0Gradient->weights[0]->values[inputs[1] * grad->weights[0]->cols];
+
+        __m256* grad2 = (__m256*) &grad->weights[0]->values[inputs[2] * grad->weights[0]->cols];
+        __m256* grad4 = (__m256*) &grad->weights[0]->values[inputs[4] * grad->weights[0]->cols];
+        __m256* grad3 = (__m256*) &grad->weights[0]->values[inputs[3] * grad->weights[0]->cols];
+        __m256* grad5 = (__m256*) &grad->weights[0]->values[inputs[5] * grad->weights[0]->cols];
+
         pthread_mutex_lock(&L0Locks[inputs[0]]);
-        for (int j = 0; j < grad->weights[0]->cols; j++)
-            L0Gradient->weights[0]->values[inputs[0] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
-        pthread_mutex_unlock(&L0Locks[inputs[0]]);
+        for (int j = 0; j < grad->weights[0]->cols / 8; j+=4) {
+            grad0[j+0] = _mm256_add_ps(grad0[j+0], segm1[j+0]);
+            grad0[j+1] = _mm256_add_ps(grad0[j+1], segm1[j+1]);
+            grad0[j+2] = _mm256_add_ps(grad0[j+2], segm1[j+2]);
+            grad0[j+3] = _mm256_add_ps(grad0[j+3], segm1[j+3]);
+        } pthread_mutex_unlock(&L0Locks[inputs[0]]);
 
         pthread_mutex_lock(&L0Locks[inputs[1]]);
-        for (int j = 0; j < grad->weights[0]->cols; j++)
-            L0Gradient->weights[0]->values[inputs[1] * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
-        pthread_mutex_unlock(&L0Locks[inputs[1]]);
+        for (int j = 0; j < grad->weights[0]->cols / 8; j+=4) {
+            grad1[j+0] = _mm256_add_ps(grad1[j+0], segm2[j+0]);
+            grad1[j+1] = _mm256_add_ps(grad1[j+1], segm2[j+1]);
+            grad1[j+2] = _mm256_add_ps(grad1[j+2], segm2[j+2]);
+            grad1[j+3] = _mm256_add_ps(grad1[j+3], segm2[j+3]);
+        } pthread_mutex_unlock(&L0Locks[inputs[1]]);
 
-        for (int j = 0; j < grad->weights[0]->cols; j++) {
-            grad->weights[0]->values[inputs[2] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
-            grad->weights[0]->values[inputs[3] * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
-            grad->weights[0]->values[inputs[4] * grad->weights[0]->cols + j] += dlossdz[seg1_head + j];
-            grad->weights[0]->values[inputs[5] * grad->weights[0]->cols + j] += dlossdz[seg2_head + j];
+        for (int j = 0; j < grad->weights[0]->cols / 8; j++) {
+            grad2[j] = _mm256_add_ps(grad2[j], segm1[j]);
+            grad4[j] = _mm256_add_ps(grad4[j], segm1[j]);
+            grad3[j] = _mm256_add_ps(grad3[j], segm2[j]);
+            grad5[j] = _mm256_add_ps(grad5[j], segm2[j]);
         }
     }
 
