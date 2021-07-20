@@ -41,7 +41,6 @@ void zero_vector(Vector *vector) {
     memset(vector->values, 0, sizeof(float) * vector->length);
 }
 
-
 /// Matrix Functions
 
 Matrix *create_matrix(int rows, int cols) {
@@ -59,7 +58,6 @@ void zero_matrix(Matrix *matrix) {
     memset(matrix->values, 0, sizeof(float) * matrix->rows * matrix->cols);
 }
 
-
 /// Evaluator Functions
 
 Evaluator *create_evaluator(Network *nn) {
@@ -69,24 +67,15 @@ Evaluator *create_evaluator(Network *nn) {
     eval->activated   = malloc(sizeof(Vector*) * nn->layers);
     eval->layers      = nn->layers;
 
-#if NN_TYPE == NORMAL
-
     for (int i = 0; i < eval->layers; i++) {
-        eval->unactivated[i] = create_vector(nn->biases[i]->length);
-        eval->activated[i]   = create_vector(nn->biases[i]->length);
+
+        const int length = i + 1 == eval->layers
+                         ? nn->biases[i]->length
+                         : nn->weights[i+1]->rows;
+
+        eval->unactivated[i] = create_vector(length);
+        eval->activated[i]   = create_vector(length);
     }
-
-#elif NN_TYPE == HALFKP
-
-    eval->unactivated[0] = create_vector(2 * nn->biases[0]->length);
-    eval->activated[0]   = create_vector(2 * nn->biases[0]->length);
-
-    for (int i = 1; i < eval->layers; i++) {
-        eval->unactivated[i] = create_vector(nn->biases[i]->length);
-        eval->activated[i]   = create_vector(nn->biases[i]->length);
-    }
-
-#endif
 
     return eval;
 }
@@ -102,7 +91,6 @@ void delete_evaluator(Evaluator *eval) {
     free(eval->activated);
     free(eval);
 }
-
 
 /// Gradient Functions
 
@@ -141,7 +129,6 @@ void zero_gradient(Gradient *grad) {
     }
 }
 
-
 /// Optimizer Functions
 
 Optimizer *create_optimizer(Network *nn) {
@@ -157,7 +144,6 @@ void delete_optimizer(Optimizer *opt) {
     free(opt);
 }
 
-
 /// Chess Bitboard Functions
 
 int getlsb(uint64_t bb) {
@@ -170,7 +156,6 @@ int poplsb(uint64_t *bb) {
     *bb &= *bb - 1;
     return lsb;
 }
-
 
 /// Operating System Definitions
 

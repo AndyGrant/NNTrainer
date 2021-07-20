@@ -23,5 +23,8 @@ CFLAGS = -O3 -flto -ffast-math -mfma -march=native -DNDEBUG
 
 NETDIR := $(shell mkdir -p Networks)
 
-default:
-	$(CC) $(SRC) $(WFLAGS) $(CFLAGS) $(LIBS)
+halfkp:
+	$(CC) $(SRC) archs/halfkp.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=HALFKP
+
+psqbb:
+	$(CC) $(SRC) archs/psqbb.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=NORMAL

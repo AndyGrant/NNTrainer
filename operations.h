@@ -23,9 +23,7 @@
 #include "config.h"
 #include "types.h"
 
-#if NN_TYPE == NORMAL
-int compute_input(const Sample *sample, int index, int square);
-#elif NN_TYPE == HALFKP
+#if NN_TYPE == HALFKP
 void compute_inputs(const Sample *sample, int index, int square, int *inputs);
 int nnue_to_relative_kmap(int encoded);
 int nnue_to_relative_psqt(int encoded);
@@ -35,10 +33,8 @@ void add_array_to_vector(Vector *vector, const float *addends);
 void add_array_mul_vector_to_matrix(Matrix *matrix, const float *mulends, const Vector *vector);
 void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const float *dotends);
 
-void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output);
 void affine_transform(const Vector *vector, const Matrix *matrix, const Vector *bias, Vector *output);
 void evaluate_network(const Network *nn, Evaluator *eval, const Sample *sample);
 
 void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample);
 void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz, int layer);
-void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz);

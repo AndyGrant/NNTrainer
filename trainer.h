@@ -42,29 +42,6 @@ void load_network(Network *nn, const char *fname);
 
 /**************************************************************************************************************/
 
-#if NN_TYPE == NORMAL
-
-typedef struct Sample {
-    uint64_t occupied;   // 8-byte occupancy bitboard ( All Pieces )
-    int16_t  eval;       // 2-byte int for the target evaluation
-    uint8_t  result;     // 1-byte int for result. { L=0, D=1, W=2 }
-    uint8_t  packed[16]; // 1-byte int per two pieces
-} Sample;
-
-#elif NN_TYPE == HALFKP
-
-typedef struct Sample {
-    uint64_t occupied;   // 8-byte occupancy bitboard ( No Kings )
-    int16_t  eval;       // 2-byte int for the target evaluation
-    uint8_t  result;     // 1-byte int for result. { L=0, D=1, W=2 }
-    uint8_t  turn;       // 1-byte int for the side-to-move flag
-    uint8_t  wking;      // 1-byte int for the White King Square
-    uint8_t  bking;      // 1-byte int for the Black King Square
-    uint8_t  packed[15]; // 1-byte int per two non-King pieces
-} Sample;
-
-#endif
-
 Sample *load_samples(const char *fname, int length);
 
 void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch);

@@ -23,26 +23,7 @@
 #include "trainer.h"
 #include "utils.h"
 
-
-#if NN_TYPE == NORMAL
-
-int compute_input(const Sample *sample, int index, int square) {
-
-    #define normal_encode(c, pt, sq) (64 * ((6 * (c)) + (pt)) + sq)
-
-    int piece  = nibble_decode(index, sample->packed) % 8;
-    int colour = nibble_decode(index, sample->packed) / 8;
-
-    return normal_encode(colour, piece, square);
-}
-
-#endif
-
 #if NN_TYPE == HALFKP
-
-extern pthread_mutex_t *L0Locks;
-
-extern Gradient *L0Gradient;
 
 static int file_of(int sq) { return sq % 8; }
 
@@ -142,51 +123,6 @@ void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const fl
 }
 
 
-void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output) {
-
-#if NN_TYPE == NORMAL
-
-    set_vector(output, bias->values);
-
-    uint64_t bb = sample->occupied;
-
-    for (int i = 0; bb != 0ull; i++) {
-
-        int input = compute_input(sample, i, poplsb(&bb));
-
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[j] += matrix->values[input * matrix->cols + j];
-    }
-
-#elif NN_TYPE == HALFKP
-
-    uint64_t bb = sample->occupied;
-    int inputs[6], seg1_head = 0, seg2_head = matrix->cols;
-
-    for (int i = 0; i < bias->length; i++) {
-        output->values[seg1_head + i] = bias->values[i];
-        output->values[seg2_head + i] = bias->values[i];
-    }
-
-    for (int i = 0; bb != 0ull; i++) {
-
-        compute_inputs(sample, i, poplsb(&bb), inputs);
-
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[seg1_head + j] += matrix->values[inputs[0] * matrix->cols + j]
-                                           + matrix->values[inputs[2] * matrix->cols + j]
-                                           + matrix->values[inputs[4] * matrix->cols + j];
-
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[seg2_head + j] += matrix->values[inputs[1] * matrix->cols + j]
-                                           + matrix->values[inputs[3] * matrix->cols + j]
-                                           + matrix->values[inputs[5] * matrix->cols + j];
-    }
-
-#endif
-
-}
-
 void affine_transform(const Vector *vector, const Matrix *matrix, const Vector *bias, Vector *output) {
 
     set_vector(output, bias->values);
@@ -242,73 +178,4 @@ void apply_backprop(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample
         set_matrix_dot_array_to_array(dlossdz_d1, nn->weights[layer], dlossdz);
         apply_backprop(nn, eval, grad, sample, dlossdz_d1, layer-1);
     }
-}
-
-void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz) {
-
-#if NN_TYPE == NORMAL
-
-    uint64_t bb = sample->occupied;
-
-    nn->backprops[0](dlossdz, eval->unactivated[0], eval->activated[0]);
-    add_array_to_vector(grad->biases[0], dlossdz);
-
-    for (int i = 0; bb != 0ull; i++) {
-
-        int index = compute_input(sample, i, poplsb(&bb));
-
-        for (int j = 0; j < grad->weights[0]->cols; j++)
-            grad->weights[0]->values[index * grad->weights[0]->cols + j] += dlossdz[j];
-    }
-
-#elif NN_TYPE == HALFKP
-
-    uint64_t bb = sample->occupied;
-    int inputs[6], seg1_head = 0, seg2_head = grad->weights[0]->cols;
-
-    __m256 *const segm1 = (__m256*) &dlossdz[seg1_head];
-    __m256 *const segm2 = (__m256*) &dlossdz[seg2_head];
-
-    nn->backprops[0](dlossdz, eval->unactivated[0], eval->activated[0]);
-    for (int i = 0; i < grad->biases[0]->length; i++)
-        grad->biases[0]->values[i] += dlossdz[seg1_head+i] + dlossdz[seg2_head+i];
-
-    for (int i = 0; bb != 0ull; i++) {
-
-        compute_inputs(sample, i, poplsb(&bb), inputs);
-
-        __m256* grad0 = (__m256*) &L0Gradient->weights[0]->values[inputs[0] * grad->weights[0]->cols];
-        __m256* grad1 = (__m256*) &L0Gradient->weights[0]->values[inputs[1] * grad->weights[0]->cols];
-
-        __m256* grad2 = (__m256*) &grad->weights[0]->values[inputs[2] * grad->weights[0]->cols];
-        __m256* grad4 = (__m256*) &grad->weights[0]->values[inputs[4] * grad->weights[0]->cols];
-        __m256* grad3 = (__m256*) &grad->weights[0]->values[inputs[3] * grad->weights[0]->cols];
-        __m256* grad5 = (__m256*) &grad->weights[0]->values[inputs[5] * grad->weights[0]->cols];
-
-        pthread_mutex_lock(&L0Locks[inputs[0]]);
-        for (int j = 0; j < grad->weights[0]->cols / 8; j+=4) {
-            grad0[j+0] = _mm256_add_ps(grad0[j+0], segm1[j+0]);
-            grad0[j+1] = _mm256_add_ps(grad0[j+1], segm1[j+1]);
-            grad0[j+2] = _mm256_add_ps(grad0[j+2], segm1[j+2]);
-            grad0[j+3] = _mm256_add_ps(grad0[j+3], segm1[j+3]);
-        } pthread_mutex_unlock(&L0Locks[inputs[0]]);
-
-        pthread_mutex_lock(&L0Locks[inputs[1]]);
-        for (int j = 0; j < grad->weights[0]->cols / 8; j+=4) {
-            grad1[j+0] = _mm256_add_ps(grad1[j+0], segm2[j+0]);
-            grad1[j+1] = _mm256_add_ps(grad1[j+1], segm2[j+1]);
-            grad1[j+2] = _mm256_add_ps(grad1[j+2], segm2[j+2]);
-            grad1[j+3] = _mm256_add_ps(grad1[j+3], segm2[j+3]);
-        } pthread_mutex_unlock(&L0Locks[inputs[1]]);
-
-        for (int j = 0; j < grad->weights[0]->cols / 8; j++) {
-            grad2[j] = _mm256_add_ps(grad2[j], segm1[j]);
-            grad4[j] = _mm256_add_ps(grad4[j], segm1[j]);
-            grad3[j] = _mm256_add_ps(grad3[j], segm2[j]);
-            grad5[j] = _mm256_add_ps(grad5[j], segm2[j]);
-        }
-    }
-
-#endif
-
 }

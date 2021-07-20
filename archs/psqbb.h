@@ -19,30 +19,20 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
-#include "activate.h"
-#include "types.h"
+#include "../types.h"
 
-#define MAX_INPUTS 43850
-#define BATCHSIZE  16384
-#define LEARNRATE  0.001
+typedef struct Sample {
+    uint64_t occupied;   // 8-byte occupancy bitboard ( All Pieces )
+    int16_t  eval;       // 2-byte int for the target evaluation
+    uint8_t  result;     // 1-byte int for result. { L=0, D=1, W=2 }
+    uint8_t  packed[16]; // 1-byte int per two pieces
+} Sample;
 
-#define BETA_1 0.9
-#define BETA_2 0.999
+void init_architecture(Network *nn);
 
-static const int   NSAMPLES    = 1000 * 1000 * 10;
-static const char  DATAFILE[]  = "s9.100M.nndata";
-
-static const int   NVALIDATE   = 1000 * 1000 * 10;
-static const char  VALIDFILE[] = "s9.100M.nndata";
-
-static const bool  USE_WEIGHTS = false;
-static const char  NNWEIGHTS[] = "";
-
-static const int   LOAD_SIZE  = 1000 * 1000 * 10;
-static const float SIGM_COEFF = 2.42 / 400.00;
-
-// Choose a Loss, LossProp, and NN Architecture
-
-#define LOSS_FUNC     l2_one_neuron_loss
-#define LOSSPROP_FUNC l2_one_neuron_lossprop
+void insert_indices(bool *array, Sample *sample);
+void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output);
+void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz);
+void update_input_weights(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch, int idx, int age);

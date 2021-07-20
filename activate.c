@@ -78,19 +78,19 @@ void activate_null(const Vector *input, Vector *output) {
 /// >> typedef void (*BackProp) (float *dlossdz, const Vector *vector, const Vector *vector);
 
 void backprop_relu(float *dlossdz, const Vector *unactivated, const Vector *activated) {
-    (void) activated; // Not useful fpr computing derivatives
+    (void) activated; // Not useful for computing derivatives
     for (int i = 0; i < unactivated->length; i++)
         dlossdz[i] *= relu_prime(unactivated->values[i]);
 }
 
 void backprop_clipped_relu(float *dlossdz, const Vector *unactivated, const Vector *activated) {
-    (void) activated; // Not useful fpr computing derivatives
+    (void) activated; // Not useful for computing derivatives
     for (int i = 0; i < unactivated->length; i++)
         dlossdz[i] *= clipped_relu_prime(unactivated->values[i]);
 }
 
 void backprop_sigmoid(float *dlossdz, const Vector *unactivated, const Vector *activated) {
-    (void) activated; // Not useful fpr computing derivatives
+    (void) activated; // Not useful for computing derivatives
     for (int i = 0; i < unactivated->length; i++)
         dlossdz[i] *= sigmoid_prime(unactivated->values[i]);
 }
