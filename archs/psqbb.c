@@ -34,11 +34,7 @@ const Layer ARCHITECTURE[] = {
 
 const size_t LAYER_COUNT = sizeof(ARCHITECTURE) / sizeof(Layer);
 
-/// Extra helpers for the Architecture
-
-void init_architecture(Network *nn) {
-    (void) nn;
-}
+/// Any and all static helper functions for the Architecture
 
 static int compute_input(const Sample *sample, int index, int square) {
 
@@ -49,6 +45,12 @@ static int compute_input(const Sample *sample, int index, int square) {
     return normal_encode(colour, piece, square);
 
     #undef normal_encode
+}
+
+/// Extra helpers for the Architecture
+
+void init_architecture(Network *nn) {
+    (void) nn;
 }
 
 /// Implementation of the Architecture interface
@@ -97,4 +99,8 @@ void update_input_weights(Optimizer *opt, Network *nn, Gradient **grads, Batch *
 
     for (int i = start; i < start + nn->weights[0]->cols; i += 8)
         avx2_update_weights(opt, nn, grads, 0, i, age);
+}
+
+void export_network(Network *nn) {
+    (void) nn;
 }

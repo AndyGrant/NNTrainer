@@ -144,7 +144,7 @@ void delete_optimizer(Optimizer *opt) {
     free(opt);
 }
 
-/// Chess Bitboard Functions
+/// Chess Utility Functions
 
 int getlsb(uint64_t bb) {
     assert(bb);  // lsb(0) is undefined
@@ -155,6 +155,26 @@ int poplsb(uint64_t *bb) {
     int lsb = getlsb(*bb);
     *bb &= *bb - 1;
     return lsb;
+}
+
+int file_of(int sq) {
+    return sq % 8;
+}
+
+int rank_of(int sq) {
+    return sq / 8;
+}
+
+int square(int rank, int file) {
+    return rank * 8 + file;
+}
+
+int relative_rank_of(int colour, int sq) {
+    return colour == WHITE ? rank_of(sq) : 7 - rank_of(sq);
+}
+
+int relative_square(int colour, int sq) {
+    return square(relative_rank_of(colour, sq), file_of(sq));
 }
 
 /// Operating System Definitions

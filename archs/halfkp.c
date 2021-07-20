@@ -36,6 +36,85 @@ const Layer ARCHITECTURE[] = {
 
 const size_t LAYER_COUNT = sizeof(ARCHITECTURE) / sizeof(Layer);
 
+/// Any and all static helper functions for the Architecture
+
+static void compute_inputs(const Sample *sample, int index, int square, int *inputs) {
+
+    #define halfkp_encode(ksq, cr, pt, sq) (640 * (ksq) + 64 * (5 * (cr) + (pt)) + sq)
+
+    int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
+    int nstmk = sample->turn == WHITE ? sample->bking : sample->wking;
+
+    int sksq  = relative_square( sample->turn,  stmk);
+    int nsksq = relative_square(!sample->turn, nstmk);
+
+    int srelsq  = relative_square( sample->turn, square);
+    int nsrelsq = relative_square(!sample->turn, square);
+
+    int piece  = nibble_decode(index, sample->packed) % 8;
+    int colour = nibble_decode(index, sample->packed) / 8;
+
+    int saug  = 15 * (7 + rank_of( sksq) - rank_of( srelsq)) + (7 + file_of( sksq) - file_of( srelsq));
+    int nsaug = 15 * (7 + rank_of(nsksq) - rank_of(nsrelsq)) + (7 + file_of(nsksq) - file_of(nsrelsq));
+
+    inputs[0] = (64 * 10 * sksq ) + (64 * (5 * (colour == sample->turn) + piece)) + srelsq;
+    inputs[1] = (64 * 10 * nsksq) + (64 * (5 * (colour != sample->turn) + piece)) + nsrelsq;
+
+    inputs[2] = 40960 + (225 * (5 * (colour == sample->turn) + piece)) + saug;
+    inputs[3] = 40960 + (225 * (5 * (colour != sample->turn) + piece)) + nsaug;
+
+    inputs[4] = 40960 + 2250 + 64 * (5 * (colour == sample->turn) + piece) + srelsq;
+    inputs[5] = 40960 + 2250 + 64 * (5 * (colour != sample->turn) + piece) + nsrelsq;
+
+    #undef halfkp_encode
+}
+
+static int nnue_to_relative_kmap(int encoded) {
+
+    /// Given a value [0, 40960], which encodes a (King Sq, Piece-Col, Piece Sq),
+    /// compute the relative index mapping of [0, 2250] which is the encoded form
+    /// of (Piece-Col, Rankwise-distance, Filewise-distance).
+
+    const int piecesq   = (encoded % 64);       // Enc = (1 * Piece Square  )
+    const int piececol  = (encoded % 640) / 64; //     + (64 * Piece-Col    )
+    const int kingsq    = (encoded / 640);      //     + (640 * King Sq     )
+
+    const int relative  = 15 * (7 + rank_of(kingsq) - rank_of(piecesq))
+                             + (7 + file_of(kingsq) - file_of(piecesq));
+
+    return (225 * piececol) + relative;
+}
+
+static int nnue_to_relative_psqt(int encoded) {
+
+    /// Given a value [0, 40960], which encodes a (King Sq, Piece-Col, Piece Sq),
+    /// compute the relative index mapping of [0, 640] which is the encoded form
+    /// of (Piece-Col, Piece Sq).
+
+    const int piecesq   = (encoded % 64);       // Enc = (1 * Piece Square  )
+    const int piececol  = (encoded % 640) / 64; //     + (64 * Piece-Col    )
+    //    int kingsq    = (encoded / 640);      //     + (640 * King Sq     )
+
+    return (64 * piececol) + piecesq;
+}
+
+static void collapse_network(Network *nn) {
+
+    const int rows = nn->weights[0]->rows = 40960;
+    const int cols = nn->weights[0]->cols;
+
+    for (int i = 0; i < rows; i++) {
+
+        const int offset  = cols * i;
+        const int augoff1 = cols * (rows + 0    + nnue_to_relative_kmap(i));
+        const int augoff2 = cols * (rows + 2250 + nnue_to_relative_psqt(i));
+
+        for (int j = 0; j < cols; j++)
+            nn->weights[0]->values[offset+j] += nn->weights[0]->values[augoff1+j]
+                                              + nn->weights[0]->values[augoff2+j];
+    }
+}
+
 /// Extra helpers for the Architecture
 
 Gradient *L0Gradient;
@@ -148,4 +227,73 @@ void update_input_weights(Optimizer *opt, Network *nn, Gradient **grads, Batch *
     if (batch->indices[idx] < 40960)
         for (int i = start; i < start + nn->weights[0]->cols; i += 64)
             avx2_update_8x8(opt, nn, &L0Gradient, 0, i, age);
+}
+
+void export_network(Network *nn, char *fname) {
+
+    FILE *fout = fopen("exported.nn", "wb");
+    load_network(nn, fname); collapse_network(nn);
+
+    {
+        #define CLAMP1KB(f)   ((f) > 2048 ? 2048 : ((f) < -2048 ? -2048 : (f)))
+        #define QUANTIN16B(f) ((int16_t) CLAMP1KB(roundf(64.0 * (f))))
+        #define QUANTIN16W(f) ((int16_t) CLAMP1KB(roundf(64.0 * (f))))
+
+        const int layer = 0;
+        const int rows  = nn->weights[layer]->rows;
+        const int cols  = nn->weights[layer]->cols;
+
+        int16_t *biases  = malloc(sizeof(int16_t) * cols);
+        int16_t *weights = malloc(sizeof(int16_t) * rows * cols);
+
+        for (int i = 0; i < cols; i++)
+            biases[i] = QUANTIN16B(nn->biases[layer]->values[i]);
+
+        for (int i = 0; i < rows * cols; i++)
+            weights[i] = QUANTIN16W(nn->weights[layer]->values[i]);
+
+        fwrite(biases, sizeof(int16_t), cols, fout);
+        fwrite(weights, sizeof(int16_t), rows * cols, fout);
+        free(biases); free(weights);
+
+        #undef CLAMP1KB
+        #undef QUANTIN16B
+        #undef QUANTIN16W
+    }
+
+    {
+        #define QUANT32B(f) ((int16_t) (roundf(64.0 * (f))))
+        #define QUANT16W(f) ((int32_t) (roundf(64.0 * (f))))
+
+        const int layer = 1;
+        const int rows  = nn->weights[layer]->rows;
+        const int cols  = nn->weights[layer]->cols;
+
+        int32_t *biases  = malloc(sizeof(int32_t) * cols);
+        int16_t *weights = malloc(sizeof(int16_t) * rows * cols);
+
+        for (int i = 0; i < cols; i++)
+            biases[i] = QUANT32B(nn->biases[layer]->values[i]);
+
+        for (int i = 0; i < rows * cols; i++)
+            weights[i] = QUANT16W(nn->weights[layer]->values[i]);
+
+        fwrite(biases, sizeof(int32_t), cols, fout);
+        fwrite(weights, sizeof(int16_t), rows * cols, fout);
+        free(biases); free(weights);
+
+        #undef QUANT32B
+        #undef QUANT16W
+    }
+
+    for (int layer = 2; layer < nn->layers; layer++) {
+
+        const int rows = nn->weights[layer]->rows;
+        const int cols = nn->weights[layer]->cols;
+
+        fwrite(nn->biases[layer]->values, sizeof(float), cols, fout);
+        fwrite(nn->weights[layer]->values, sizeof(float), rows * cols, fout);
+    }
+
+    fclose(fout);
 }

@@ -23,85 +23,6 @@
 #include "trainer.h"
 #include "utils.h"
 
-#if NN_TYPE == HALFKP
-
-static int file_of(int sq) { return sq % 8; }
-
-static int rank_of(int sq) { return sq / 8; }
-
-static int square(int rank, int file) { return rank * 8 + file; }
-
-static int relative_rank_of(int colour, int sq) {
-    return colour == WHITE ? rank_of(sq) : 7 - rank_of(sq);
-}
-
-static int relative_square(int colour, int sq) {
-    return square(relative_rank_of(colour, sq), file_of(sq));
-}
-
-void compute_inputs(const Sample *sample, int index, int square, int *inputs) {
-
-    #define halfkp_encode(ksq, cr, pt, sq) (640 * (ksq) + 64 * (5 * (cr) + (pt)) + sq)
-
-    int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
-    int nstmk = sample->turn == WHITE ? sample->bking : sample->wking;
-
-    int sksq  = relative_square( sample->turn,  stmk);
-    int nsksq = relative_square(!sample->turn, nstmk);
-
-    int srelsq  = relative_square( sample->turn, square);
-    int nsrelsq = relative_square(!sample->turn, square);
-
-    int piece  = nibble_decode(index, sample->packed) % 8;
-    int colour = nibble_decode(index, sample->packed) / 8;
-
-    int saug  = 15 * (7 + rank_of( sksq) - rank_of( srelsq)) + (7 + file_of( sksq) - file_of( srelsq));
-    int nsaug = 15 * (7 + rank_of(nsksq) - rank_of(nsrelsq)) + (7 + file_of(nsksq) - file_of(nsrelsq));
-
-    inputs[0] = (64 * 10 * sksq ) + (64 * (5 * (colour == sample->turn) + piece)) + srelsq;
-    inputs[1] = (64 * 10 * nsksq) + (64 * (5 * (colour != sample->turn) + piece)) + nsrelsq;
-
-    inputs[2] = 40960 + (225 * (5 * (colour == sample->turn) + piece)) + saug;
-    inputs[3] = 40960 + (225 * (5 * (colour != sample->turn) + piece)) + nsaug;
-
-    inputs[4] = 40960 + 2250 + 64 * (5 * (colour == sample->turn) + piece) + srelsq;
-    inputs[5] = 40960 + 2250 + 64 * (5 * (colour != sample->turn) + piece) + nsrelsq;
-
-    #undef halfkp_encode
-}
-
-int nnue_to_relative_kmap(int encoded) {
-
-    /// Given a value [0, 40960], which encodes a (King Sq, Piece-Col, Piece Sq),
-    /// compute the relative index mapping of [0, 2250] which is the encoded form
-    /// of (Piece-Col, Rankwise-distance, Filewise-distance).
-
-    const int piecesq   = (encoded % 64);       // Enc = (1 * Piece Square  )
-    const int piececol  = (encoded % 640) / 64; //     + (64 * Piece-Col    )
-    const int kingsq    = (encoded / 640);      //     + (640 * King Sq     )
-
-    const int relative  = 15 * (7 + rank_of(kingsq) - rank_of(piecesq))
-                             + (7 + file_of(kingsq) - file_of(piecesq));
-
-    return (225 * piececol) + relative;
-}
-
-int nnue_to_relative_psqt(int encoded) {
-
-    /// Given a value [0, 40960], which encodes a (King Sq, Piece-Col, Piece Sq),
-    /// compute the relative index mapping of [0, 640] which is the encoded form
-    /// of (Piece-Col, Piece Sq).
-
-    const int piecesq   = (encoded % 64);       // Enc = (1 * Piece Square  )
-    const int piececol  = (encoded % 640) / 64; //     + (64 * Piece-Col    )
-    //    int kingsq    = (encoded / 640);      //     + (640 * King Sq     )
-
-    return (64 * piececol) + piecesq;
-}
-
-#endif
-
-
 void add_array_to_vector(Vector *vector, const float *addends) {
     for (int i = 0; i < vector->length; i++)
         vector->values[i] += addends[i];
@@ -121,7 +42,6 @@ void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const fl
             output[i] += dotends[j] * matrix->values[i * matrix->cols + j];
     }
 }
-
 
 void affine_transform(const Vector *vector, const Matrix *matrix, const Vector *bias, Vector *output) {
 
@@ -152,7 +72,6 @@ void evaluate_network(const Network *nn, Evaluator *eval, const Sample *sample) 
         nn->activations[layer](outputs, activated);
     }
 }
-
 
 void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample) {
 

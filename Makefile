@@ -27,4 +27,4 @@ halfkp:
 	$(CC) $(SRC) archs/halfkp.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=HALFKP
 
 psqbb:
-	$(CC) $(SRC) archs/psqbb.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=NORMAL
+	$(CC) $(SRC) archs/psqbb.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=PSQBB

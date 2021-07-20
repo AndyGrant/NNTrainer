@@ -18,7 +18,7 @@
 
 #pragma once
 
-#define NORMAL 0 // Normal Networks with a single Input set
+#define PSQBB  0 // Normal PSQBB Networks with a single Input set
 #define HALFKP 1 // Networks with 2xHalfs via Shogi-King-Piece encoding
 
 enum { WHITE, BLACK };
@@ -55,7 +55,7 @@ typedef struct Layer {
 #define nibble_decode(i, A) (((i) % 2) ? (A[(i)/2] & 0xF) : (A[(i)/2]) >> 4)
 #define nibble_encode(i, A, cp) (A[(i)/2] |= (((i) % 2) ? (cp) : (cp << 4)))
 
-#if NN_TYPE == NORMAL
+#if NN_TYPE == PSQBB
     #include "archs/psqbb.h"
 #elif NN_TYPE == HALFKP
     #include "archs/halfkp.h"

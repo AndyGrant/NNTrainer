@@ -36,3 +36,4 @@ void insert_indices(bool *array, Sample *sample);
 void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output);
 void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz);
 void update_input_weights(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch, int idx, int age);
+void export_network(Network *nn);

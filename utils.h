@@ -89,10 +89,15 @@ typedef struct Optimizer {
 Optimizer *create_optimizer(Network *nn);
 void delete_optimizer(Optimizer *opt);
 
-/// Chess Bitboard Declarations
+/// Chess Utility Declarations
 
 int getlsb(uint64_t bb);
 int poplsb(uint64_t *bb);
+int file_of(int sq);
+int rank_of(int sq);
+int square(int rank, int file);
+int relative_rank_of(int colour, int sq);
+int relative_square(int colour, int sq);
 
 // Operating System Function Declarations
 
