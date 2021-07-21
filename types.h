@@ -18,8 +18,9 @@
 
 #pragma once
 
-#define PSQBB  0 // Normal PSQBB Networks with a single Input set
-#define HALFKP 1 // Networks with 2xHalfs via Shogi-King-Piece encoding
+#define PSQBB     0 // Normal PSQBB Networks with a single Input set
+#define HALFKP    1 // Networks with 2xHalfs via Shogi-King-Piece encoding
+#define MIRRORHKP 2 // ...
 
 enum { WHITE, BLACK };
 
@@ -59,4 +60,6 @@ typedef struct Layer {
     #include "archs/psqbb.h"
 #elif NN_TYPE == HALFKP
     #include "archs/halfkp.h"
+#elif NN_TYPE == MIRRORHKP
+    #include "archs/mirrorhkp.h"
 #endif

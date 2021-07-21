@@ -28,3 +28,6 @@ halfkp:
 
 psqbb:
 	$(CC) $(SRC) archs/psqbb.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=PSQBB
+
+mirrorhkp:
+	$(CC) $(SRC) archs/mirrorhkp.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=MIRRORHKP
