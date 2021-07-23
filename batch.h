@@ -27,3 +27,4 @@ typedef struct Batch {
 } Batch;
 
 Batch *create_batches(Sample *samples, int nsamples, int batch_size);
+void delete_batches(Batch *batches, int nsamples, int batch_size);

@@ -30,16 +30,16 @@
 #define BETA_1 0.9
 #define BETA_2 0.999
 
-static const int   NSAMPLES    = 1000 * 1000 * 10;
+static const int   NSAMPLES    = 1024 * 1024 * 10;
 static const char  DATAFILE[]  = "s9.100M.nndata";
 
-static const int   NVALIDATE   = 1000 * 1000 * 10;
+static const int   NVALIDATE   = 1024 * 1024 * 10;
 static const char  VALIDFILE[] = "s9.100M.nndata";
 
 static const bool  USE_WEIGHTS = false;
 static const char  NNWEIGHTS[] = "";
 
-static const int   LOAD_SIZE  = 1000 * 1000 * 10;
+static const int   LOAD_SIZE  = 1024 * 1024 * 128;
 static const float SIGM_COEFF = 2.42 / 400.00;
 
 // Choose a Loss, LossProp, and NN Architecture
