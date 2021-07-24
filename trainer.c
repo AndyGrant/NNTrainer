@@ -56,24 +56,13 @@ int main(int argc, char **argv) {
     if (USE_WEIGHTS) load_network(nn, NNWEIGHTS);
     else printf("Created Network with randomized Weights\n\n");
 
-    printf("Loading Validation Dataset...\n");
-    Sample *validate = load_samples(VALIDFILE, NVALIDATE);
-
-    printf("Loading Training Dataset...\n");
-    Sample *samples  = load_samples(DATAFILE, NSAMPLES);
-
-    Batch *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
+    Sample *validate = load_samples(VALIDFILE, NULL, NVALIDATE, 0);
+    Sample *samples  = load_samples( DATAFILE, NULL, MIN(LOAD_SIZE, NSAMPLES), 0);
 
     Optimizer *opt = create_optimizer(nn);
-
-    Evaluator *evals[NTHREADS];
-    Gradient  *grads[NTHREADS];
-
-    for (int i = 0; i < NTHREADS; i++)
-        evals[i] = create_evaluator(nn);
-
-    for (int i = 0; i < NTHREADS; i++)
-        grads[i] = create_gradient(nn);
+    Evaluator *evals[NTHREADS]; Gradient *grads[NTHREADS];
+    for (int i = 0; i < NTHREADS; i++) evals[i] = create_evaluator(nn);
+    for (int i = 0; i < NTHREADS; i++) grads[i] = create_gradient(nn);
 
     init_architecture(nn); // Call any Architecture Specific Inits
 
@@ -84,31 +73,42 @@ int main(int argc, char **argv) {
 
         /// Train by iterating over each of the Training Samples
 
-        for (int batch = 0; batch < NSAMPLES / BATCHSIZE; batch++) {
+        for (int sample = 0; sample < NSAMPLES; sample += LOAD_SIZE) {
 
-            current_iteration++;
+            const int sample_cnt = MIN(NSAMPLES - sample, LOAD_SIZE);
 
-            #pragma omp parallel for schedule(static, BATCHSIZE / NTHREADS) num_threads(NTHREADS) reduction(+:loss)
-            for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
-                const int tidx = omp_get_thread_num();
-                evaluate_network(nn, evals[tidx], &samples[i]);
-                build_backprop_grad(nn, evals[tidx], grads[tidx], &samples[i]);
-                loss += LOSS_FUNC(&samples[i], evals[tidx]->activated[nn->layers-1]);
+            load_samples(DATAFILE, samples, sample_cnt, sample);
+            Batch *batches = create_batches(samples, sample_cnt, BATCHSIZE);
+
+            for (int batch = 0; batch < sample_cnt / BATCHSIZE; batch++) {
+
+                current_iteration++;
+
+                #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:loss)
+                for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
+                    const int tidx = omp_get_thread_num();
+                    evaluate_network(nn, evals[tidx], &samples[i]);
+                    build_backprop_grad(nn, evals[tidx], grads[tidx], &samples[i]);
+                    loss += LOSS_FUNC(&samples[i], evals[tidx]->activated[nn->layers-1]);
+                }
+
+                update_network(opt, nn, grads, &batches[batch]);
+
+                if (batch % 64 == 0) {
+                    int real_batch = batch + sample / BATCHSIZE;
+                    double elapsed = (get_time_point() - start) / 1000.0;
+                    printf("\r[%4d] [%8.3fs] [Batch %d / %d]", epoch, elapsed, real_batch, NSAMPLES / BATCHSIZE);
+                }
             }
 
-            update_network(opt, nn, grads, &batches[batch]);
-
-            if (batch % 64 == 0) {
-                double elapsed = (get_time_point() - start) / 1000.0;
-                printf("\r[%4d] [%8.3fs] [Batch %d / %d]", epoch, elapsed, batch, NSAMPLES / BATCHSIZE);
-            }
+            delete_batches(batches, sample_cnt, BATCHSIZE);
         }
 
         double elapsed = (get_time_point() - start) / 1000.0;
 
         /// Verify by iterating over each of the Validation Samples
 
-        #pragma omp parallel for schedule(static, NVALIDATE / NTHREADS) num_threads(NTHREADS) reduction(+:vloss)
+        #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:vloss)
         for (int i = 0; i < NVALIDATE; i++) {
             const int tidx = omp_get_thread_num();
             evaluate_network(nn, evals[tidx], &validate[i]);
@@ -211,21 +211,15 @@ void load_network(Network *nn, const char *fname) {
 
 /**************************************************************************************************************/
 
-Sample *load_samples(const char *fname, int length) {
-
-    Sample *samples = malloc(sizeof(Sample) * length);
-    printf("Allocated %.2fMB for Samples\n",
-        (float)(sizeof(Sample) * length) / (1024 * 1024));
+Sample *load_samples(const char *fname, Sample *samples, int length, int offset) {
 
     FILE *fin = fopen(fname, "rb");
 
-    for (int i = 0; i < length; i += LOAD_SIZE) {
-        fread(&samples[i], sizeof(Sample), LOAD_SIZE, fin);
-        printf("\rLoaded %d of %d Samples", i + LOAD_SIZE, length);
-    }
+    if (samples == NULL)
+        samples = malloc(sizeof(Sample) * length);
 
-    printf("\nFinished Reading %s\n\n", fname);
-
+    fseek(fin, sizeof(Sample) * offset, SEEK_SET);
+    fread(samples, sizeof(Sample), length, fin);
     fclose(fin);
 
     return samples;

@@ -42,6 +42,9 @@ void load_network(Network *nn, const char *fname);
 
 /**************************************************************************************************************/
 
-Sample *load_samples(const char *fname, int length);
+Sample *load_samples(const char *fname, Sample *samples, int length, int offset);
 
 void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch);
+
+#define MIN(A, B) ((A) < (B) ? (A) : (B))
+#define MAX(A, B) ((A) > (B) ? (A) : (B))

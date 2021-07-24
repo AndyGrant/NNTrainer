@@ -48,31 +48,19 @@ static void create_batch(Batch *batch, Sample *start, int batch_size) {
 
 Batch *create_batches(Sample *samples, int nsamples, int batch_size) {
 
-    double start = get_time_point(), elapsed;
-    int completed = 0, batch_count = nsamples / batch_size;
-
+    int batch_count = nsamples / batch_size;
     Batch *batches = malloc(sizeof(Batch) * batch_count);
-    printf("Performing Batch List Optimizaion (Batch = %d)\n", batch_size);
 
-    #pragma omp parallel for schedule(static) num_threads(NTHREADS) shared(completed)
-    for (int i = 0; i < nsamples / batch_size; i++) {
-
+    #pragma omp parallel for schedule(static) num_threads(NTHREADS)
+    for (int i = 0; i < nsamples / batch_size; i++)
         create_batch(&batches[i], &samples[i * batch_size], batch_size);
 
-        if (++completed % 512 == 0) {
-            elapsed = (get_time_point() - start) / 1000.0;
-            printf("\r[%8.3fs] Created %d of %d Batch Lists", elapsed, completed, batch_count);
-        }
-    }
-
-    elapsed = (get_time_point() - start) / 1000.0;
-    printf("\r[%8.3fs] Created %d of %d Batch Lists", elapsed, batch_count, batch_count);
-
-    float saved = 0.0;
-    for (int i = 0; i < batch_count; i++)
-        saved += batches[i].inputs / (float) MAX_INPUTS;
-    saved = 100.0 - (saved * 100.0 / batch_count);
-    printf("\nAverage savings of %.2f%%\n\n", saved);
-
     return batches;
+}
+
+void delete_batches(Batch *batches, int nsamples, int batch_size) {
+
+    for (int i = 0; i < nsamples / batch_size; i++)
+        free(batches[i].indices);
+    free(batches);
 }
