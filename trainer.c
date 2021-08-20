@@ -224,7 +224,8 @@ Sample *load_samples(const char *fname, Sample *samples, int length, int offset)
         samples = malloc(sizeof(Sample) * length);
 
     fseek(fin, sizeof(Sample) * offset, SEEK_SET);
-    fread(samples, sizeof(Sample), length, fin);
+    if (fread(samples, sizeof(Sample), length, fin) != (size_t) length)
+        exit(EXIT_FAILURE);
     fclose(fin);
 
     return samples;
