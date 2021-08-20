@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "avx2.h"
 #include "activate.h"
@@ -163,15 +164,19 @@ void delete_network(Network *nn) {
 
 void randomize_network(Network *nn) {
 
-    #define uniform() ((float) (rand() + 1) / ((float) RAND_MAX + 2))
-    #define random()  (sqrtf(-2.0 * log(uniform())) * cos(2 * M_PI * uniform()))
+    #define uniform()  ((double) (rand() + 1) / ((double) RAND_MAX + 2))
+    #define random()   (sqrt(-2.0 * log(uniform())) * cos(2 * M_PI * uniform()))
+    #define kaiming(L) ((double)((L) ? nn->weights[L]->rows : 96.0))
+
+    srand(time(NULL));
 
     for (int i = 0; i < nn->layers; i++)
         for (int j = 0; j < nn->weights[i]->rows * nn->weights[i]->cols; j++)
-            nn->weights[i]->values[j] = random() / 4.0;
+            nn->weights[i]->values[j] = random() * sqrt(2.0 / kaiming(i));
 
     #undef uniform
     #undef random
+    #undef kaiming
 }
 
 void save_network(Network *nn, const char *fname) {
