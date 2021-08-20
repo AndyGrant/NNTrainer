@@ -281,28 +281,30 @@ void export_network(Network *nn, char *fname) {
     }
 
     {
-        #define QUANT32B(f) ((int16_t) (roundf(64.0 * (f))))
-        #define QUANT16W(f) ((int32_t) (roundf(64.0 * (f))))
+        #define CLAMP8(x)   ((x) > 127 ? 127 : ((x) < -128 ? -128 : (x)))
+        #define QUANT32B(f) ((int32_t) (roundf(32.0 * (f))))
+        #define QUANT8W(f)  ((int8_t ) (CLAMP8((int) roundf(32.0 * (f)))))
 
         const int layer = 1;
         const int rows  = nn->weights[layer]->rows;
         const int cols  = nn->weights[layer]->cols;
 
         int32_t *biases  = malloc(sizeof(int32_t) * cols);
-        int16_t *weights = malloc(sizeof(int16_t) * rows * cols);
+        int8_t  *weights = malloc(sizeof(int8_t ) * rows * cols);
 
         for (int i = 0; i < cols; i++)
             biases[i] = QUANT32B(nn->biases[layer]->values[i]);
 
         for (int i = 0; i < rows * cols; i++)
-            weights[i] = QUANT16W(nn->weights[layer]->values[i]);
+            weights[i] = QUANT8W(nn->weights[layer]->values[i]);
 
         fwrite(biases, sizeof(int32_t), cols, fout);
-        fwrite(weights, sizeof(int16_t), rows * cols, fout);
+        fwrite(weights, sizeof(int8_t), rows * cols, fout);
         free(biases); free(weights);
 
+        #undef CLAMP8
         #undef QUANT32B
-        #undef QUANT16W
+        #undef QUANT8W
     }
 
     for (int layer = 2; layer < nn->layers; layer++) {
