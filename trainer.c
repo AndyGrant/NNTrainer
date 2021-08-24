@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
 
         /// Train by iterating over each of the Training Samples
 
-        for (int sample = 0; sample < NSAMPLES; sample += LOAD_SIZE) {
+        for (uint64_t sample = 0; sample < NSAMPLES; sample += LOAD_SIZE) {
 
             const int sample_cnt = MIN(NSAMPLES - sample, LOAD_SIZE);
 
@@ -216,7 +216,7 @@ void load_network(Network *nn, const char *fname) {
 
 /**************************************************************************************************************/
 
-Sample *load_samples(const char *fname, Sample *samples, int length, int offset) {
+Sample *load_samples(const char *fname, Sample *samples, int length, uint64_t offset) {
 
     FILE *fin = fopen(fname, "rb");
 

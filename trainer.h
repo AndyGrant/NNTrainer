@@ -42,7 +42,7 @@ void load_network(Network *nn, const char *fname);
 
 /**************************************************************************************************************/
 
-Sample *load_samples(const char *fname, Sample *samples, int length, int offset);
+Sample *load_samples(const char *fname, Sample *samples, int length, uint64_t offset);
 
 void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch);
 
