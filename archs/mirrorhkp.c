@@ -28,8 +28,8 @@
 /// Definition of the Architecture
 
 const Layer ARCHITECTURE[] = {
-    {23370, 256, &activate_relu,    &backprop_relu    },
-    {  512,  32, &activate_relu,    &backprop_relu    },
+    {23370, 192, &activate_relu,    &backprop_relu    },
+    {  384,  32, &activate_relu,    &backprop_relu    },
     {   32,  32, &activate_relu,    &backprop_relu    },
     {   32,   1, &activate_sigmoid, &backprop_sigmoid },
 };
