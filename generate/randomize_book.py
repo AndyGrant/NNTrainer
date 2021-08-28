@@ -1,21 +1,16 @@
 import chess
-import random
+import argparse
 
+from random import choice, randrange
 from subprocess import Popen, PIPE
 from multiprocessing import Process, Queue
 
-ENGINE  = './Ethereal'
-RANDOMS = 10
-DEPTH   = 12
-CUTOFF  = 1000
-THREADS = 32
-
 class Engine():
 
-    def __init__(self, ename):
+    def __init__(self, ename, fischer):
         self.engine = Popen([ename], stdin=PIPE, stdout=PIPE, universal_newlines=True, shell=True)
         self.uci_ready()
-        self.uci_set_frc()
+        if fischer: self.uci_set_frc()
 
     def write_line(self, line):
         self.engine.stdin.write(line)
@@ -49,40 +44,48 @@ class Engine():
         relative = int(output.split(' cp ')[1].split()[0])
         return [relative, -relative][' b ' in fen]
 
-with open('frcpositions.epd') as fin:
-    FENS = [x.strip() for x in fin.readlines()]
+def random_position(arguments):
 
-def random_position():
+    if arguments.fischer: pos = chess.Board.from_chess960_pos(randrange(960))
+    else: pos = chess.Board('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
 
-    pos = chess.Board(random.choice(FENS), chess960=True)
-
-    for ii in range(RANDOMS):
+    for ii in range(int(arguments.plies)):
         moves = list(pos.legal_moves)
         if not moves: return random_position()
-        pos.push(random.choice(moves))
+        pos.push(choice(moves))
 
     if pos.legal_moves:
-        return pos.fen()
+        if arguments.fischer: return pos.shredder_fen()
+        else: return pos.fen()
 
-    return random_position()
+    return random_position(arguments)
 
-def thread_build_book(outqueue):
+def thread_build_book(outqueue, arguments):
 
-    engine = Engine(ENGINE)
+    engine = Engine(arguments.engine, arguments.fischer)
 
     while True:
-        fen = random_position()
-        seval = engine.uci_depthn_eval(fen, DEPTH)
-        if seval != None and abs(seval) < CUTOFF:
+        fen = random_position(arguments)
+        seval = engine.uci_depthn_eval(fen, int(arguments.depth))
+        if seval != None and abs(seval) < int(arguments.cutoff):
             outqueue.put(fen)
 
 if __name__ == '__main__':
 
+    p = argparse.ArgumentParser()
+    p.add_argument('--engine' , help='Binary File'   , required=True)
+    p.add_argument('--depth'  , help='Search Depth'  , required=True)
+    p.add_argument('--cutoff' , help='Search Margin' , required=True)
+    p.add_argument('--plies'  , help='Random Length' , required=True)
+    p.add_argument('--threads', help='Worker Threads', required=True)
+    p.add_argument('--fischer', help='FRC/960', action='store_true')
+    arguments = p.parse_args()
+
     outqueue = Queue()
 
     workers = [
-        Process(target=thread_build_book, args=(outqueue,))
-        for ii in range(THREADS)]
+        Process(target=thread_build_book, args=(outqueue, arguments,))
+        for ii in range(int(arguments.threads))]
     for worker in workers: worker.start()
 
     while True:
