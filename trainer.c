@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
                     int real_batch = batch + sample / BATCHSIZE;
                     double elapsed = (get_time_point() - start) / 1000.0;
                     printf("\r[%4d] [%8.3fs] [Batch %d / %d]",
-                        epoch, elapsed, real_batch, (int) NSAMPLES / BATCHSIZE);
+                        epoch, elapsed, real_batch, (int) (NSAMPLES / BATCHSIZE));
                 }
             }
 
