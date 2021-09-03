@@ -19,6 +19,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "activate.h"
 #include "types.h"
@@ -30,17 +31,17 @@
 #define BETA_1 0.9
 #define BETA_2 0.999
 
-static const int   NSAMPLES    = 1024 * 1024 * 1753;
-static const char  DATAFILE[]  = "training.nndata";
+static const uint64_t NSAMPLES    = 1024 * 1024 * 2623ULL;
+static const char     DATAFILE[]  = "training.nndata";
 
-static const int   NVALIDATE   = 1024 * 1024 * 32;
-static const char  VALIDFILE[] = "validation.nndata";
+static const uint64_t NVALIDATE   = 1024 * 1024 * 32ULL;
+static const char     VALIDFILE[] = "validation.nndata";
 
-static const bool  USE_WEIGHTS = false;
-static const char  NNWEIGHTS[] = "";
+static const bool     USE_WEIGHTS = false;
+static const char     NNWEIGHTS[] = "";
 
-static const int   LOAD_SIZE  = 1024 * 1024 * 128;
-static const float SIGM_COEFF = 2.662 / 400.00;
+static const uint64_t LOAD_SIZE  = 1024 * 1024 * 128;
+static const float    SIGM_COEFF = 2.662 / 400.00;
 
 // Choose a Loss, LossProp, and NN Architecture
 

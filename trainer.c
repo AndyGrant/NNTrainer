@@ -98,7 +98,8 @@ int main(int argc, char **argv) {
                 if (batch % 64 == 0) {
                     int real_batch = batch + sample / BATCHSIZE;
                     double elapsed = (get_time_point() - start) / 1000.0;
-                    printf("\r[%4d] [%8.3fs] [Batch %d / %d]", epoch, elapsed, real_batch, NSAMPLES / BATCHSIZE);
+                    printf("\r[%4d] [%8.3fs] [Batch %d / %d]",
+                        epoch, elapsed, real_batch, (int) NSAMPLES / BATCHSIZE);
                 }
             }
 
@@ -110,7 +111,7 @@ int main(int argc, char **argv) {
         /// Verify by iterating over each of the Validation Samples
 
         #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:vloss)
-        for (int i = 0; i < NVALIDATE; i++) {
+        for (uint64_t i = 0; i < NVALIDATE; i++) {
             const int tidx = omp_get_thread_num();
             evaluate_network(nn, evals[tidx], &validate[i]);
             vloss += LOSS_FUNC(&validate[i], evals[tidx]->activated[nn->layers-1]);
