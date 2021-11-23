@@ -29,7 +29,7 @@
 
 const Layer ARCHITECTURE[] = {
     {  768, 512, &activate_relu,    &backprop_relu    },
-    {  512,  32, &activate_relu,    &backprop_sigmoid },
+    {  512,   1, &activate_sigmoid, &backprop_sigmoid },
 };
 
 const size_t LAYER_COUNT = sizeof(ARCHITECTURE) / sizeof(Layer);
