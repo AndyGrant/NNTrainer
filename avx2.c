@@ -29,13 +29,13 @@ extern int NTHREADS;
 extern uint64_t current_iteration;
 extern uint64_t last_touched_iteration[MAX_INPUTS];
 
+
 void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index, int since_last) {
 
-    const __m256 learnrate    = _mm256_set1_ps(LEARNRATE);
     const __m256 zero         = _mm256_setzero_ps();
 
     const __m256 beta1_normal = _mm256_set1_ps(pow(BETA_1, since_last));
-    const __m256 beta1_minus  = _mm256_mul_ps(learnrate, _mm256_set1_ps(1.0 - BETA_1));
+    const __m256 beta1_minus  = _mm256_set1_ps(LEARNRATE * (1.0 - BETA_1));
 
     const __m256 beta2_normal = _mm256_set1_ps(pow(BETA_2, since_last));
     const __m256 beta2_minus  = _mm256_set1_ps(1.0 - BETA_2);
@@ -86,12 +86,11 @@ void avx2_update_weights(Optimizer *opt, Network *nn, Gradient **grads, int laye
 
 void avx2_update_8x8(Optimizer *opt, Network *nn, Gradient **grads, int layer, int index, int since_last) {
 
-    const __m256 learnrate    = _mm256_set1_ps(LEARNRATE);
     const __m256 zero         = _mm256_setzero_ps();
-    const __m256 epsilon      = _mm256_set1_ps(1e-8);
+    const __m256 nepsilon     = _mm256_set1_ps(-1e-8);
 
     const __m256 beta1_normal = _mm256_set1_ps(pow(BETA_1, since_last));
-    const __m256 beta1_minus  = _mm256_mul_ps(learnrate, _mm256_set1_ps(1.0 - BETA_1));
+    const __m256 beta1_minus  = _mm256_set1_ps(LEARNRATE * (1.0 - BETA_1));
 
     const __m256 beta2_normal = _mm256_set1_ps(pow(BETA_2, since_last));
     const __m256 beta2_minus  = _mm256_set1_ps(1.0 - BETA_2);
@@ -137,32 +136,23 @@ void avx2_update_8x8(Optimizer *opt, Network *nn, Gradient **grads, int layer, i
     velocities[6] = _mm256_fmadd_ps(beta2_normal, velocities[6], velocity_b6);
     velocities[7] = _mm256_fmadd_ps(beta2_normal, velocities[7], velocity_b7);
 
-    const __m256 denom0 = _mm256_add_ps(epsilon, _mm256_sqrt_ps(velocities[0]));
-    const __m256 denom1 = _mm256_add_ps(epsilon, _mm256_sqrt_ps(velocities[1]));
-    const __m256 denom2 = _mm256_add_ps(epsilon, _mm256_sqrt_ps(velocities[2]));
-    const __m256 denom3 = _mm256_add_ps(epsilon, _mm256_sqrt_ps(velocities[3]));
-    const __m256 denom4 = _mm256_add_ps(epsilon, _mm256_sqrt_ps(velocities[4]));
-    const __m256 denom5 = _mm256_add_ps(epsilon, _mm256_sqrt_ps(velocities[5]));
-    const __m256 denom6 = _mm256_add_ps(epsilon, _mm256_sqrt_ps(velocities[6]));
-    const __m256 denom7 = _mm256_add_ps(epsilon, _mm256_sqrt_ps(velocities[7]));
+    const __m256 denom0 = _mm256_sub_ps(nepsilon, _mm256_sqrt_ps(velocities[0]));
+    const __m256 denom1 = _mm256_sub_ps(nepsilon, _mm256_sqrt_ps(velocities[1]));
+    const __m256 denom2 = _mm256_sub_ps(nepsilon, _mm256_sqrt_ps(velocities[2]));
+    const __m256 denom3 = _mm256_sub_ps(nepsilon, _mm256_sqrt_ps(velocities[3]));
+    const __m256 denom4 = _mm256_sub_ps(nepsilon, _mm256_sqrt_ps(velocities[4]));
+    const __m256 denom5 = _mm256_sub_ps(nepsilon, _mm256_sqrt_ps(velocities[5]));
+    const __m256 denom6 = _mm256_sub_ps(nepsilon, _mm256_sqrt_ps(velocities[6]));
+    const __m256 denom7 = _mm256_sub_ps(nepsilon, _mm256_sqrt_ps(velocities[7]));
 
-    const __m256 delta0 = _mm256_mul_ps(moments[0], _mm256_rcp_ps(denom0));
-    const __m256 delta1 = _mm256_mul_ps(moments[1], _mm256_rcp_ps(denom1));
-    const __m256 delta2 = _mm256_mul_ps(moments[2], _mm256_rcp_ps(denom2));
-    const __m256 delta3 = _mm256_mul_ps(moments[3], _mm256_rcp_ps(denom3));
-    const __m256 delta4 = _mm256_mul_ps(moments[4], _mm256_rcp_ps(denom4));
-    const __m256 delta5 = _mm256_mul_ps(moments[5], _mm256_rcp_ps(denom5));
-    const __m256 delta6 = _mm256_mul_ps(moments[6], _mm256_rcp_ps(denom6));
-    const __m256 delta7 = _mm256_mul_ps(moments[7], _mm256_rcp_ps(denom7));
-
-    weights[0] = _mm256_sub_ps(weights[0], delta0);
-    weights[1] = _mm256_sub_ps(weights[1], delta1);
-    weights[2] = _mm256_sub_ps(weights[2], delta2);
-    weights[3] = _mm256_sub_ps(weights[3], delta3);
-    weights[4] = _mm256_sub_ps(weights[4], delta4);
-    weights[5] = _mm256_sub_ps(weights[5], delta5);
-    weights[6] = _mm256_sub_ps(weights[6], delta6);
-    weights[7] = _mm256_sub_ps(weights[7], delta7);
+    weights[0] = _mm256_fmadd_ps(moments[0], _mm256_rcp_ps(denom0), weights[0]);
+    weights[1] = _mm256_fmadd_ps(moments[1], _mm256_rcp_ps(denom1), weights[1]);
+    weights[2] = _mm256_fmadd_ps(moments[2], _mm256_rcp_ps(denom2), weights[2]);
+    weights[3] = _mm256_fmadd_ps(moments[3], _mm256_rcp_ps(denom3), weights[3]);
+    weights[4] = _mm256_fmadd_ps(moments[4], _mm256_rcp_ps(denom4), weights[4]);
+    weights[5] = _mm256_fmadd_ps(moments[5], _mm256_rcp_ps(denom5), weights[5]);
+    weights[6] = _mm256_fmadd_ps(moments[6], _mm256_rcp_ps(denom6), weights[6]);
+    weights[7] = _mm256_fmadd_ps(moments[7], _mm256_rcp_ps(denom7), weights[7]);
 
     gradients[0] = zero;
     gradients[1] = zero;
