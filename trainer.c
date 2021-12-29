@@ -169,7 +169,7 @@ void randomize_network(Network *nn) {
     #define random()   (sqrt(-2.0 * log(uniform())) * cos(2 * M_PI * uniform()))
     #define kaiming(L) ((double)((L) ? nn->weights[L]->rows : 96.0))
 
-    srand(time(NULL));
+    srand(0); // time(NULL));
 
     for (int i = 0; i < nn->layers; i++)
         for (int j = 0; j < nn->weights[i]->rows * nn->weights[i]->cols; j++)

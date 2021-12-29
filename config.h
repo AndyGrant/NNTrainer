@@ -31,10 +31,10 @@
 #define BETA_1 0.9
 #define BETA_2 0.999
 
-static const uint64_t NSAMPLES    = 1024 * 1024 * 2623ULL;
+static const uint64_t NSAMPLES    = 1024 * 1024 * 1; // 1750ULL;
 static const char     DATAFILE[]  = "training.nndata";
 
-static const uint64_t NVALIDATE   = 1024 * 1024 * 32ULL;
+static const uint64_t NVALIDATE   = 1024 * 1024 * 1;// 64ULL;
 static const char     VALIDFILE[] = "validation.nndata";
 
 static const bool     USE_WEIGHTS = false;

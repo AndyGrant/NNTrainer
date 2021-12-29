@@ -94,6 +94,7 @@ void delete_optimizer(Optimizer *opt);
 
 int getlsb(uint64_t bb);
 int poplsb(uint64_t *bb);
+int popcount(uint64_t bb);
 int file_of(int sq);
 int rank_of(int sq);
 int square(int rank, int file);

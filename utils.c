@@ -157,6 +157,10 @@ int poplsb(uint64_t *bb) {
     return lsb;
 }
 
+int popcount(uint64_t bb) {
+    return __builtin_popcountll(bb);
+}
+
 int file_of(int sq) {
     return sq % 8;
 }

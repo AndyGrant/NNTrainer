@@ -23,6 +23,20 @@
 #include "trainer.h"
 #include "utils.h"
 
+///
+
+static int compute_phase(const Sample *sample) {
+
+    const int PieceToPhase[] = { 0, 1, 1, 2, 4, 0 };
+
+    int phase = 0;
+
+    for (int i = 0; i < popcount(sample->occupied); i++)
+        phase += PieceToPhase[nibble_decode(i, sample->packed) % 8];
+
+    return MIN(24, phase);
+}
+
 /// Activation and BackProp function utilities. These all take
 /// a float. For each Activation, there is a BackProp function
 
@@ -104,11 +118,22 @@ void backprop_null(float *dlossdz, const Vector *unactivated, const Vector *acti
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
 float l2_one_neuron_loss(const Sample *sample, const Vector *outputs) {
-    return (0.50 * powf(sigmoid(sample->eval) - outputs->values[0], 2.0))
-        +  (0.50 * powf((sample->result / 2.0) - outputs->values[0], 2.0));
+
+    const float scale  = 1.00 + 0.40 * (compute_phase(sample) / 24.0);
+    const float output = sigmoid(scale * outputs->values[0]);
+
+    return (0.50 * powf(sigmoid(sample->eval) - output, 2.0))
+        +  (0.50 * powf((sample->result / 2.0) - output, 2.0));
 }
 
 void l2_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
-    *dlossdz = -2.0 * (0.50 * (sigmoid(sample->eval) - outputs->values[0]))
-             + -2.0 * (0.50 * ((sample->result / 2.0) - outputs->values[0]));
+
+    const float scale  = 1.00 + 0.40 * (compute_phase(sample) / 24.0);
+    const float output = sigmoid(scale * outputs->values[0]);
+    const float sigmp  = sigmoid_prime(scale * outputs->values[0]);
+
+    *dlossdz = -2.0 * (0.50 * (sigmoid(sample->eval) - output))
+             + -2.0 * (0.50 * ((sample->result / 2.0) - output));
+
+    *dlossdz *= sigmp;
 }
