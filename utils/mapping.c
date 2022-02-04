@@ -25,6 +25,8 @@
 typedef struct Sample {
     uint64_t occupied;   // 8-byte occupancy bitboard ( No Kings )
     int16_t  eval;       // 2-byte int for the target evaluation
+    uint8_t  ply;        // 1-byte int for the current move ply
+    uint8_t  plies;      // 1-byte int for the total game length
     uint8_t  result;     // 1-byte int for result. { L=0, D=1, W=2 }
     uint8_t  turn;       // 1-byte int for the side-to-move flag
     uint8_t  wking;      // 1-byte int for the White King Square
@@ -78,8 +80,8 @@ static void compute_optimal_K(int *evals, float *wdls, int samples) {
 int main(int argc, char **argv) {
 
     const int ChunkSize  = 1024 * 1024;
-    const int SampleSize = 1024 * 1024 * 64;
-    const char* FileName = "../../Training/s13.64m.nndata";
+    const int SampleSize = 1024 * 1024 * 256;
+    const char* FileName = "../s15.training.nndata";
 
     int *evals  = malloc(sizeof(int  ) * SampleSize);
     float *wdls = malloc(sizeof(float) * SampleSize);
