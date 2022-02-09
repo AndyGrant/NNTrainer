@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
 
                 current_iteration++;
 
-                collapse_network(nncpy, nn);
+                collapse_network(nncpy, nn); // evaluate_network() expects collapsed
 
                 #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:loss)
                 for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
@@ -115,10 +115,12 @@ int main(int argc, char **argv) {
 
         /// Verify by iterating over each of the Validation Samples
 
+        collapse_network(nncpy, nn); // evaluate_network() expects collapsed
+
         #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:vloss)
         for (uint64_t i = 0; i < NVALIDATE; i++) {
             const int tidx = omp_get_thread_num();
-            evaluate_network(nn, evals[tidx], &validate[i]);
+            evaluate_network(nncpy, evals[tidx], &validate[i]);
             vloss += LOSS_FUNC(&validate[i], evals[tidx]->activated[nn->layers-1]);
         }
 
