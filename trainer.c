@@ -318,6 +318,14 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
         for (int i = 0; i < NTHREADS; i++)
             zero_vector(grads[i]->biases[layer]);
     }
+
+    /// Clip Layer 1's Weights ( which will be int8_t )
+    /// This code should be in archs/mirrorhkp.x as a post-update supplement
+
+    for (int i = 0; i < nn->weights[1]->rows * nn->weights[1]->cols; i++) {
+        nn->weights[1]->values[i] = MIN(+3.96, nn->weights[1]->values[i]);
+        nn->weights[1]->values[i] = MAX(-3.96, nn->weights[1]->values[i]);
+    }
 }
 
 /**************************************************************************************************************/
