@@ -338,8 +338,8 @@ void export_network(Network *dst, Network *src, char *fname) {
 
 void collapse_network(Network *dst, const Network *src) {
 
-    const int rows = src->weights[0]->rows = 20480;
-    const int cols = src->weights[0]->cols;
+    const int rows = dst->weights[0]->rows = 20480;
+    const int cols = dst->weights[0]->cols;
 
     #pragma omp parallel for schedule(static) num_threads(NTHREADS)
     for (int i = 0; i < rows; i++) {
@@ -354,10 +354,10 @@ void collapse_network(Network *dst, const Network *src) {
                                               + src->weights[0]->values[augoff2+j];
     }
 
-    for (int i = 1; i < src->layers; i++) {
+    for (int i = 1; i < dst->layers; i++) {
 
-        const int N = src->weights[i]->rows;
-        const int M = src->weights[i]->cols;
+        const int N = dst->weights[i]->rows;
+        const int M = dst->weights[i]->cols;
 
         memcpy(dst->biases[i]->values,  src->biases[i]->values,  sizeof(float) * M);
         memcpy(dst->weights[i]->values, src->weights[i]->values, sizeof(float) * N * M);
