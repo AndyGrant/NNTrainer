@@ -25,6 +25,8 @@
 #include "../trainer.h"
 #include "../utils.h"
 
+extern int NTHREADS;
+
 /// Definition of the Architecture
 
 const Layer ARCHITECTURE[] = {
@@ -89,6 +91,27 @@ static void compute_inputs(const Sample *sample, int index, int square, int *inp
     #undef halfkp_encode
 }
 
+static void compute_real_inputs(const Sample *sample, int index, int square, int *inputs) {
+
+    int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
+    int nstmk = sample->turn == WHITE ? sample->bking : sample->wking;
+
+    int sksq  = relative_square( sample->turn,  stmk);
+    int nsksq = relative_square(!sample->turn, nstmk);
+
+    int srelsq  = relative_square( sample->turn, square);
+    int nsrelsq = relative_square(!sample->turn, square);
+
+    if (queen_side_sq(sksq)) { sksq = mirror_square(sksq); srelsq = mirror_square(srelsq); }
+    if (queen_side_sq(nsksq)) { nsksq = mirror_square(nsksq); nsrelsq = mirror_square(nsrelsq); }
+
+    int piece  = nibble_decode(index, sample->packed) % 8;
+    int colour = nibble_decode(index, sample->packed) / 8;
+
+    inputs[0] = (64 * 10 * sq64_to_sq32(sksq )) + (64 * (5 * (colour == sample->turn) + piece)) + srelsq;
+    inputs[1] = (64 * 10 * sq64_to_sq32(nsksq)) + (64 * (5 * (colour != sample->turn) + piece)) + nsrelsq;
+}
+
 static int nnue_to_relative_kmap(int encoded) {
 
     /// Given a value [0, 23370], which encodes a (King Sq, Piece-Col, Piece Sq),
@@ -116,23 +139,6 @@ static int nnue_to_relative_psqt(int encoded) {
     //    int kingsq    = (encoded / 640);      //     + ( 640 * King Sq    )
 
     return (64 * piececol) + piecesq;
-}
-
-static void collapse_network(Network *nn) {
-
-    const int rows = nn->weights[0]->rows = 20480;
-    const int cols = nn->weights[0]->cols;
-
-    for (int i = 0; i < rows; i++) {
-
-        const int offset  = cols * i;
-        const int augoff1 = cols * (rows + 0    + nnue_to_relative_kmap(i));
-        const int augoff2 = cols * (rows + 2250 + nnue_to_relative_psqt(i));
-
-        for (int j = 0; j < cols; j++)
-            nn->weights[0]->values[offset+j] += nn->weights[0]->values[augoff1+j]
-                                              + nn->weights[0]->values[augoff2+j];
-    }
 }
 
 /// Extra helpers for the Architecture
@@ -163,26 +169,37 @@ void insert_indices(bool *array, Sample *sample) {
 void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output) {
 
     uint64_t bb = sample->occupied;
-    int inputs[6], seg1_head = 0, seg2_head = matrix->cols;
+    int inputs[30][2], popcnt = 0, seg1_head = 0, seg2_head = matrix->cols;
+
+    for (popcnt = 0; bb != 0ull; popcnt++)
+        compute_real_inputs(sample, popcnt, poplsb(&bb), inputs[popcnt]);
 
     for (int i = 0; i < bias->length; i++) {
         output->values[seg1_head + i] = bias->values[i];
         output->values[seg2_head + i] = bias->values[i];
     }
 
-    for (int i = 0; bb != 0ull; i++) {
+    __m256* seg1 = (__m256*) &output->values[seg1_head];
+    __m256* seg2 = (__m256*) &output->values[seg2_head];
 
-        compute_inputs(sample, i, poplsb(&bb), inputs);
+    for (int i = 0; i < popcnt; i++) {
 
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[seg1_head + j] += matrix->values[inputs[0] * matrix->cols + j]
-                                           + matrix->values[inputs[2] * matrix->cols + j]
-                                           + matrix->values[inputs[4] * matrix->cols + j];
+        __m256* inp1 = (__m256*) &matrix->values[inputs[i][0] * matrix->cols];
+        __m256* inp2 = (__m256*) &matrix->values[inputs[i][1] * matrix->cols];
 
-        for (int j = 0; j < matrix->cols; j++)
-            output->values[seg2_head + j] += matrix->values[inputs[1] * matrix->cols + j]
-                                           + matrix->values[inputs[3] * matrix->cols + j]
-                                           + matrix->values[inputs[5] * matrix->cols + j];
+        for (int j = 0; j < matrix->cols / 8; j += 4) {
+            seg1[j+0] = _mm256_add_ps(seg1[j+0], inp1[j+0]);
+            seg1[j+1] = _mm256_add_ps(seg1[j+1], inp1[j+1]);
+            seg1[j+2] = _mm256_add_ps(seg1[j+2], inp1[j+2]);
+            seg1[j+3] = _mm256_add_ps(seg1[j+3], inp1[j+3]);
+        }
+
+        for (int j = 0; j < matrix->cols / 8; j += 4) {
+            seg2[j+0] = _mm256_add_ps(seg2[j+0], inp2[j+0]);
+            seg2[j+1] = _mm256_add_ps(seg2[j+1], inp2[j+1]);
+            seg2[j+2] = _mm256_add_ps(seg2[j+2], inp2[j+2]);
+            seg2[j+3] = _mm256_add_ps(seg2[j+3], inp2[j+3]);
+        }
     }
 }
 
@@ -248,10 +265,10 @@ void update_input_weights(Optimizer *opt, Network *nn, Gradient **grads, Batch *
             avx2_update_8x8(opt, nn, &L0Gradient, 0, i, age);
 }
 
-void export_network(Network *nn, char *fname) {
+void export_network(Network *dst, Network *src, char *fname) {
 
     FILE *fout = fopen("exported.nn", "wb");
-    load_network(nn, fname); collapse_network(nn);
+    load_network(src, fname); collapse_network(dst, src);
 
     {
         #define CLAMP1KB(f)   ((f) > 2048 ? 2048 : ((f) < -2048 ? -2048 : (f)))
@@ -259,17 +276,17 @@ void export_network(Network *nn, char *fname) {
         #define QUANTIN16W(f) ((int16_t) CLAMP1KB(roundf(64.0 * (f))))
 
         const int layer = 0;
-        const int rows  = nn->weights[layer]->rows;
-        const int cols  = nn->weights[layer]->cols;
+        const int rows  = dst->weights[layer]->rows;
+        const int cols  = dst->weights[layer]->cols;
 
         int16_t *biases  = malloc(sizeof(int16_t) * cols);
         int16_t *weights = malloc(sizeof(int16_t) * rows * cols);
 
         for (int i = 0; i < cols; i++)
-            biases[i] = QUANTIN16B(nn->biases[layer]->values[i]);
+            biases[i] = QUANTIN16B(dst->biases[layer]->values[i]);
 
         for (int i = 0; i < rows * cols; i++)
-            weights[i] = QUANTIN16W(nn->weights[layer]->values[i]);
+            weights[i] = QUANTIN16W(dst->weights[layer]->values[i]);
 
         fwrite(biases, sizeof(int16_t), cols, fout);
         fwrite(weights, sizeof(int16_t), rows * cols, fout);
@@ -286,17 +303,17 @@ void export_network(Network *nn, char *fname) {
         #define QUANT8W(f)  ((int8_t ) (CLAMP8((int) roundf(32.0 * (f)))))
 
         const int layer = 1;
-        const int rows  = nn->weights[layer]->rows;
-        const int cols  = nn->weights[layer]->cols;
+        const int rows  = dst->weights[layer]->rows;
+        const int cols  = dst->weights[layer]->cols;
 
         int32_t *biases  = malloc(sizeof(int32_t) * cols);
         int8_t  *weights = malloc(sizeof(int8_t ) * rows * cols);
 
         for (int i = 0; i < cols; i++)
-            biases[i] = QUANT32B(nn->biases[layer]->values[i]);
+            biases[i] = QUANT32B(dst->biases[layer]->values[i]);
 
         for (int i = 0; i < rows * cols; i++)
-            weights[i] = QUANT8W(nn->weights[layer]->values[i]);
+            weights[i] = QUANT8W(dst->weights[layer]->values[i]);
 
         fwrite(biases, sizeof(int32_t), cols, fout);
         fwrite(weights, sizeof(int8_t), rows * cols, fout);
@@ -307,14 +324,42 @@ void export_network(Network *nn, char *fname) {
         #undef QUANT8W
     }
 
-    for (int layer = 2; layer < nn->layers; layer++) {
+    for (int layer = 2; layer < dst->layers; layer++) {
 
-        const int rows = nn->weights[layer]->rows;
-        const int cols = nn->weights[layer]->cols;
+        const int rows = dst->weights[layer]->rows;
+        const int cols = dst->weights[layer]->cols;
 
-        fwrite(nn->biases[layer]->values, sizeof(float), cols, fout);
-        fwrite(nn->weights[layer]->values, sizeof(float), rows * cols, fout);
+        fwrite(dst->biases[layer]->values, sizeof(float), cols, fout);
+        fwrite(dst->weights[layer]->values, sizeof(float), rows * cols, fout);
     }
 
     fclose(fout);
+}
+
+void collapse_network(Network *dst, const Network *src) {
+
+    const int rows = src->weights[0]->rows = 20480;
+    const int cols = src->weights[0]->cols;
+
+    #pragma omp parallel for schedule(static) num_threads(NTHREADS)
+    for (int i = 0; i < rows; i++) {
+
+        const int offset  = cols * i;
+        const int augoff1 = cols * (rows + 0    + nnue_to_relative_kmap(i));
+        const int augoff2 = cols * (rows + 2250 + nnue_to_relative_psqt(i));
+
+        for (int j = 0; j < cols; j++)
+            dst->weights[0]->values[offset+j] = src->weights[0]->values[offset+j]
+                                              + src->weights[0]->values[augoff1+j]
+                                              + src->weights[0]->values[augoff2+j];
+    }
+
+    for (int i = 1; i < src->layers; i++) {
+
+        const int N = src->weights[i]->rows;
+        const int M = src->weights[i]->cols;
+
+        memcpy(dst->biases[i]->values,  src->biases[i]->values,  sizeof(float) * M);
+        memcpy(dst->weights[i]->values, src->weights[i]->values, sizeof(float) * N * M);
+    }
 }
