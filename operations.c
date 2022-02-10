@@ -36,10 +36,56 @@ void add_array_mul_vector_to_matrix(Matrix *matrix, const float *mulends, const 
 
 void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const float *dotends) {
 
-    for (int i = 0; i < matrix->rows; i++) {
-        output[i] = 0.0;
-        for (int j = 0; j < matrix->cols; j++)
-            output[i] += dotends[j] * matrix->values[i * matrix->cols + j];
+    if (matrix->cols == 1) {
+        for (int i = 0; i < matrix->rows; i++)
+            output[i] = dotends[0] * matrix->values[i];
+        return;
+    }
+
+    assert(matrix->rows % 8 && matrix->cols % 8);
+
+    __m256* out = (__m256*) output;
+    __m256* dot = (__m256*) dotends;
+    __m256* mat = (__m256*) matrix->values;
+
+    for (int i = 0; i < matrix->rows / 8; i++) {
+
+        __m256 acc0 = _mm256_mul_ps(dot[0], mat[(i * 8 + 0) * (matrix->cols / 8) + 0]);
+        __m256 acc1 = _mm256_mul_ps(dot[0], mat[(i * 8 + 1) * (matrix->cols / 8) + 0]);
+        __m256 acc2 = _mm256_mul_ps(dot[0], mat[(i * 8 + 2) * (matrix->cols / 8) + 0]);
+        __m256 acc3 = _mm256_mul_ps(dot[0], mat[(i * 8 + 3) * (matrix->cols / 8) + 0]);
+        __m256 acc4 = _mm256_mul_ps(dot[0], mat[(i * 8 + 4) * (matrix->cols / 8) + 0]);
+        __m256 acc5 = _mm256_mul_ps(dot[0], mat[(i * 8 + 5) * (matrix->cols / 8) + 0]);
+        __m256 acc6 = _mm256_mul_ps(dot[0], mat[(i * 8 + 6) * (matrix->cols / 8) + 0]);
+        __m256 acc7 = _mm256_mul_ps(dot[0], mat[(i * 8 + 7) * (matrix->cols / 8) + 0]);
+
+        for (int j = 1; j < matrix->cols / 8; j++) {
+            acc0 = _mm256_fmadd_ps(dot[j], mat[(i * 8 + 0) * (matrix->cols / 8) + j], acc0);
+            acc1 = _mm256_fmadd_ps(dot[j], mat[(i * 8 + 1) * (matrix->cols / 8) + j], acc1);
+            acc2 = _mm256_fmadd_ps(dot[j], mat[(i * 8 + 2) * (matrix->cols / 8) + j], acc2);
+            acc3 = _mm256_fmadd_ps(dot[j], mat[(i * 8 + 3) * (matrix->cols / 8) + j], acc3);
+            acc4 = _mm256_fmadd_ps(dot[j], mat[(i * 8 + 4) * (matrix->cols / 8) + j], acc4);
+            acc5 = _mm256_fmadd_ps(dot[j], mat[(i * 8 + 5) * (matrix->cols / 8) + j], acc5);
+            acc6 = _mm256_fmadd_ps(dot[j], mat[(i * 8 + 6) * (matrix->cols / 8) + j], acc6);
+            acc7 = _mm256_fmadd_ps(dot[j], mat[(i * 8 + 7) * (matrix->cols / 8) + j], acc7);
+        }
+
+        acc0 = _mm256_hadd_ps(acc0, acc1);
+        acc2 = _mm256_hadd_ps(acc2, acc3);
+        acc0 = _mm256_hadd_ps(acc0, acc2);
+        acc4 = _mm256_hadd_ps(acc4, acc5);
+        acc6 = _mm256_hadd_ps(acc6, acc7);
+        acc4 = _mm256_hadd_ps(acc4, acc6);
+
+        __m128 sumabcd1 = _mm256_extractf128_ps(acc0, 0);
+        __m128 sumabcd2 = _mm256_extractf128_ps(acc0, 1);
+        __m128 sumefgh1 = _mm256_extractf128_ps(acc4, 0);
+        __m128 sumefgh2 = _mm256_extractf128_ps(acc4, 1);
+
+        sumabcd1 = _mm_add_ps(sumabcd1, sumabcd2);
+        sumefgh1 = _mm_add_ps(sumefgh1, sumefgh2);
+
+        out[i] = _mm256_insertf128_ps(_mm256_castps128_ps256(sumabcd1), sumefgh1, 1);
     }
 }
 
