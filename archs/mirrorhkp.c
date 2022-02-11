@@ -265,10 +265,10 @@ void update_input_weights(Optimizer *opt, Network *nn, Gradient **grads, Batch *
             avx2_update_8x8(opt, nn, &L0Gradient, 0, i, age);
 }
 
-void export_network(Network *dst, Network *src, char *fname) {
+void export_network(Network *nn, char *fname) {
 
     FILE *fout = fopen("exported.nn", "wb");
-    load_network(src, fname); collapse_network(dst, src);
+    load_network(nn, fname);
 
     {
         #define CLAMP1KB(f)   ((f) > 2048 ? 2048 : ((f) < -2048 ? -2048 : (f)))
@@ -276,17 +276,17 @@ void export_network(Network *dst, Network *src, char *fname) {
         #define QUANTIN16W(f) ((int16_t) CLAMP1KB(roundf(64.0 * (f))))
 
         const int layer = 0;
-        const int rows  = dst->weights[layer]->rows;
-        const int cols  = dst->weights[layer]->cols;
+        const int rows  = nn->weights_t[layer]->rows;
+        const int cols  = nn->weights_t[layer]->cols;
 
         int16_t *biases  = malloc(sizeof(int16_t) * cols);
         int16_t *weights = malloc(sizeof(int16_t) * rows * cols);
 
         for (int i = 0; i < cols; i++)
-            biases[i] = QUANTIN16B(dst->biases[layer]->values[i]);
+            biases[i] = QUANTIN16B(nn->biases[layer]->values[i]);
 
         for (int i = 0; i < rows * cols; i++)
-            weights[i] = QUANTIN16W(dst->weights[layer]->values[i]);
+            weights[i] = QUANTIN16W(nn->weights_t[layer]->values[i]);
 
         fwrite(biases, sizeof(int16_t), cols, fout);
         fwrite(weights, sizeof(int16_t), rows * cols, fout);
@@ -303,17 +303,17 @@ void export_network(Network *dst, Network *src, char *fname) {
         #define QUANT8W(f)  ((int8_t ) (CLAMP8((int) roundf(32.0 * (f)))))
 
         const int layer = 1;
-        const int rows  = dst->weights[layer]->rows;
-        const int cols  = dst->weights[layer]->cols;
+        const int rows  = nn->weights[layer]->rows;
+        const int cols  = nn->weights[layer]->cols;
 
         int32_t *biases  = malloc(sizeof(int32_t) * cols);
         int8_t  *weights = malloc(sizeof(int8_t ) * rows * cols);
 
         for (int i = 0; i < cols; i++)
-            biases[i] = QUANT32B(dst->biases[layer]->values[i]);
+            biases[i] = QUANT32B(nn->biases[layer]->values[i]);
 
         for (int i = 0; i < rows * cols; i++)
-            weights[i] = QUANT8W(dst->weights[layer]->values[i]);
+            weights[i] = QUANT8W(nn->weights[layer]->values[i]);
 
         fwrite(biases, sizeof(int32_t), cols, fout);
         fwrite(weights, sizeof(int8_t), rows * cols, fout);
@@ -324,22 +324,22 @@ void export_network(Network *dst, Network *src, char *fname) {
         #undef QUANT8W
     }
 
-    for (int layer = 2; layer < dst->layers; layer++) {
+    for (int layer = 2; layer < nn->layers; layer++) {
 
-        const int rows = dst->weights[layer]->rows;
-        const int cols = dst->weights[layer]->cols;
+        const int rows = nn->weights[layer]->rows;
+        const int cols = nn->weights[layer]->cols;
 
-        fwrite(dst->biases[layer]->values, sizeof(float), cols, fout);
-        fwrite(dst->weights[layer]->values, sizeof(float), rows * cols, fout);
+        fwrite(nn->biases[layer]->values, sizeof(float), cols, fout);
+        fwrite(nn->weights[layer]->values, sizeof(float), rows * cols, fout);
     }
 
     fclose(fout);
 }
 
-void collapse_network(Network *dst, const Network *src) {
+void collapse_input_layer(Network *nn) {
 
-    const int rows = dst->weights[0]->rows = 20480;
-    const int cols = dst->weights[0]->cols;
+    const int rows = nn->weights_t[0]->rows = 20480;
+    const int cols = nn->weights_t[0]->cols;
 
     #pragma omp parallel for schedule(static) num_threads(NTHREADS)
     for (int i = 0; i < rows; i++) {
@@ -349,17 +349,8 @@ void collapse_network(Network *dst, const Network *src) {
         const int augoff2 = cols * (rows + 2250 + nnue_to_relative_psqt(i));
 
         for (int j = 0; j < cols; j++)
-            dst->weights[0]->values[offset+j] = src->weights[0]->values[offset+j]
-                                              + src->weights[0]->values[augoff1+j]
-                                              + src->weights[0]->values[augoff2+j];
-    }
-
-    for (int i = 1; i < dst->layers; i++) {
-
-        const int N = dst->weights[i]->rows;
-        const int M = dst->weights[i]->cols;
-
-        memcpy(dst->biases[i]->values,  src->biases[i]->values,  sizeof(float) * M);
-        memcpy(dst->weights[i]->values, src->weights[i]->values, sizeof(float) * N * M);
+            nn->weights_t[0]->values[offset+j] = nn->weights[0]->values[offset+j]
+                                               + nn->weights[0]->values[augoff1+j]
+                                               + nn->weights[0]->values[augoff2+j];
     }
 }

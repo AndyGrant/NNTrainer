@@ -98,13 +98,14 @@ void affine_transform(const Vector *vector, const Matrix *matrix, const Vector *
             output->values[j] += vector->values[i] * matrix->values[i * matrix->cols + j];
 }
 
+
 void evaluate_network(const Network *nn, Evaluator *eval, const Sample *sample) {
 
     {
         Vector *outputs   = eval->unactivated[0];
         Vector *activated = eval->activated[0];
 
-        input_transform(sample, nn->weights[0], nn->biases[0], outputs);
+        input_transform(sample, nn->weights_t[0], nn->biases[0], outputs);
         nn->activations[0](outputs, activated);
     }
 

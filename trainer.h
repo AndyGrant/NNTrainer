@@ -27,13 +27,15 @@
 
 typedef struct Network {
     int layers;
-    Matrix **weights;
     Vector **biases;
+    Matrix **weights;
+    Matrix **weights_t;
     Activation *activations;
     BackProp *backprops;
 } Network;
 
 Network *create_network(int length, const Layer *layers);
+void update_network_transposed(Network *nn);
 
 void delete_network(Network *nn);
 void randomize_network(Network *nn);

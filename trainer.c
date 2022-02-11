@@ -44,9 +44,8 @@ uint64_t last_touched_iteration[MAX_INPUTS];
 int main(int argc, char **argv) {
 
     if (argc > 2 && !strcmp(argv[1], "export")) {
-        Network *nn    = create_network(LAYER_COUNT, ARCHITECTURE);
-        Network *nncpy = create_network(LAYER_COUNT, ARCHITECTURE);
-        export_network(nncpy, nn, argv[2]);
+        Network *nn = create_network(LAYER_COUNT, ARCHITECTURE);
+        export_network(nn, argv[2]);
         exit(EXIT_SUCCESS);
     }
 
@@ -54,9 +53,7 @@ int main(int argc, char **argv) {
     NTHREADS = omp_get_max_threads();
     printf("Using %d Threads\n", NTHREADS);
 
-    Network *nn    = create_network(LAYER_COUNT, ARCHITECTURE);
-    Network *nncpy = create_network(LAYER_COUNT, ARCHITECTURE);
-
+    Network *nn = create_network(LAYER_COUNT, ARCHITECTURE);
     if (USE_WEIGHTS) load_network(nn, NNWEIGHTS);
     else printf("Created Network with randomized Weights\n\n");
 
@@ -88,12 +85,10 @@ int main(int argc, char **argv) {
 
                 current_iteration++;
 
-                collapse_network(nncpy, nn); // evaluate_network() expects collapsed
-
                 #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:loss)
                 for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
                     const int tidx = omp_get_thread_num();
-                    evaluate_network(nncpy, evals[tidx], &samples[i]);
+                    evaluate_network(nn, evals[tidx], &samples[i]);
                     build_backprop_grad(nn, evals[tidx], grads[tidx], &samples[i]);
                     loss += LOSS_FUNC(&samples[i], evals[tidx]->activated[nn->layers-1]);
                 }
@@ -115,12 +110,10 @@ int main(int argc, char **argv) {
 
         /// Verify by iterating over each of the Validation Samples
 
-        collapse_network(nncpy, nn); // evaluate_network() expects collapsed
-
         #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:vloss)
         for (uint64_t i = 0; i < NVALIDATE; i++) {
             const int tidx = omp_get_thread_num();
-            evaluate_network(nncpy, evals[tidx], &validate[i]);
+            evaluate_network(nn, evals[tidx], &validate[i]);
             vloss += LOSS_FUNC(&validate[i], evals[tidx]->activated[nn->layers-1]);
         }
 
@@ -138,36 +131,59 @@ int main(int argc, char **argv) {
 Network *create_network(int length, const Layer *layers) {
 
     Network *nn     = malloc(sizeof(Network));
-    nn->weights     = malloc(sizeof(Matrix*   ) * length);
     nn->biases      = malloc(sizeof(Vector*   ) * length);
+    nn->weights     = malloc(sizeof(Matrix*   ) * length);
+    nn->weights_t   = malloc(sizeof(Matrix*   ) * length);
     nn->activations = malloc(sizeof(Activation) * length);
     nn->backprops   = malloc(sizeof(BackProp  ) * length);
     nn->layers      = length;
 
     for (int i = 0; i < length; i++) {
-        nn->weights[i]     = create_matrix(layers[i].inputs, layers[i].outputs);
+
         nn->biases[i]      = create_vector(layers[i].outputs);
+        nn->weights[i]     = create_matrix(layers[i].inputs, layers[i].outputs);
+        nn->weights_t[i]   = create_matrix(layers[i].inputs, layers[i].outputs);
+
         nn->activations[i] = layers[i].activation;
         nn->backprops[i]   = layers[i].backprop;
     }
 
     randomize_network(nn);
+    update_network_transposed(nn);
 
     return nn;
 }
 
+void update_network_transposed(Network *nn) {
+
+    collapse_input_layer(nn); // Might be (void)
+
+    for (int layer = 1; layer < nn->layers; layer++) {
+
+        const int rows = nn->weights[layer]->rows;
+        const int cols = nn->weights[layer]->cols;
+
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                nn->weights_t[layer]->values[j * rows + i] = nn->weights[layer]->values[i * cols + j];
+    }
+}
+
+
 void delete_network(Network *nn) {
 
     for (int i = 0; i < nn->layers; i++) {
-        delete_matrix(nn->weights[i]);
         delete_vector(nn->biases[i]);
+        delete_matrix(nn->weights[i]);
+        delete_matrix(nn->weights_t[i]);
     }
 
-    free(nn->weights    );
     free(nn->biases     );
+    free(nn->weights    );
+    free(nn->weights_t  );
     free(nn->activations);
     free(nn->backprops  );
-    free(nn);
+    free(nn             );
 }
 
 void randomize_network(Network *nn) {
@@ -216,6 +232,8 @@ void load_network(Network *nn, const char *fname) {
             || fread(nn->weights[layer]->values, sizeof(float), rows * cols, fin) != (size_t) rows * cols)
             exit(EXIT_FAILURE);
     }
+
+    update_network_transposed(nn); // Init for nn->weights_t
 
     printf("Created Network with Weights from %s\n\n", fname);
 
@@ -328,6 +346,8 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
         nn->weights[1]->values[i] = MIN(+3.96, nn->weights[1]->values[i]);
         nn->weights[1]->values[i] = MAX(-3.96, nn->weights[1]->values[i]);
     }
+
+    update_network_transposed(nn); // Init for nn->weights_t
 }
 
 /**************************************************************************************************************/
