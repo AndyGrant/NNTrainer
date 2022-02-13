@@ -249,9 +249,15 @@ Sample *load_samples(const char *fname, Sample *samples, int length, uint64_t of
     if (samples == NULL)
         samples = malloc(sizeof(Sample) * length);
 
-    fseek(fin, sizeof(Sample) * offset, SEEK_SET);
+    #if defined(_WIN32) || defined(_WIN64)
+        _fseeki64(fin, sizeof(Sample) * offset, SEEK_SET);
+    #else
+        fseek(fin, sizeof(Sample) * offset, SEEK_SET);
+    #endif
+
     if (fread(samples, sizeof(Sample), length, fin) != (size_t) length)
         exit(EXIT_FAILURE);
+
     fclose(fin);
 
     return samples;
