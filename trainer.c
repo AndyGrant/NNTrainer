@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
     }
 
     setvbuf(stdout, NULL, _IONBF, 0);
-    NTHREADS = omp_get_max_threads();
+    NTHREADS = 1; // omp_get_max_threads();
     printf("Using %d Threads\n", NTHREADS);
 
     Network *nn = create_network(LAYER_COUNT, ARCHITECTURE);
@@ -66,6 +66,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < NTHREADS; i++) grads[i] = create_gradient(nn);
 
     init_architecture(nn); // Call any Architecture Specific Inits
+    if (USE_STATE) load_training_state(opt, &current_iteration, last_touched_iteration, NNSTATE);
 
     for (int epoch = 0; epoch < 25000; epoch++) {
 
@@ -121,8 +122,14 @@ int main(int argc, char **argv) {
             epoch, elapsed, loss / NSAMPLES, vloss / NVALIDATE);
 
         char fname[512];
+
+        // Save the Network in an uncollapsed, non-Quantized way
         sprintf(fname, "%sepoch%d.nn", "Networks/", epoch);
         save_network(nn, fname);
+
+        // Save the Optimizer moments, and "Lazy" Adam trackers
+        sprintf(fname, "%sepoch%d.state", "Networks/", epoch);
+        save_training_state(opt, current_iteration, last_touched_iteration, fname);
     }
 }
 
