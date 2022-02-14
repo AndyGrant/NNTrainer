@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
     }
 
     setvbuf(stdout, NULL, _IONBF, 0);
-    NTHREADS = 1; // omp_get_max_threads();
+    NTHREADS = omp_get_max_threads();
     printf("Using %d Threads\n", NTHREADS);
 
     Network *nn = create_network(LAYER_COUNT, ARCHITECTURE);

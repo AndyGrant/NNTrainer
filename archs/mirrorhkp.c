@@ -40,23 +40,6 @@ const size_t LAYER_COUNT = sizeof(ARCHITECTURE) / sizeof(Layer);
 
 /// Any and all static helper functions for the Architecture
 
-static int sq64_to_sq32(int sq) {
-    static const int Mirror[] = { 3, 2, 1, 0, 0, 1, 2, 3 };
-    return 4 * rank_of(sq) + Mirror[file_of(sq)];
-}
-
-static int sq32_to_sq64(int sq) {
-    return 8 * (sq / 4) + 4 + (sq % 4);
-}
-
-static int queen_side_sq(int sq) {
-    return file_of(sq) <= 3;
-}
-
-static int mirror_square(int sq) {
-    return square(rank_of(sq), 7 - file_of(sq));
-}
-
 static void compute_inputs(const Sample *sample, int index, int square, int *inputs) {
 
     #define halfkp_encode(ksq, cr, pt, sq) (640 * (ksq) + 64 * (5 * (cr) + (pt)) + sq)

@@ -177,6 +177,42 @@ int relative_square(int colour, int sq) {
     return square(relative_rank_of(colour, sq), file_of(sq));
 }
 
+int sq64_to_sq32(int sq) {
+
+    static const int LUT[] = {
+         3,  2,  1,  0,  0,  1,  2,  3,
+         7,  6,  5,  4,  4,  5,  6,  7,
+        11, 10,  9,  8,  8,  9, 10, 11,
+        15, 14, 13, 12, 12, 13, 14, 15,
+        19, 18, 17, 16, 16, 17, 18, 19,
+        23, 22, 21, 20, 20, 21, 22, 23,
+        27, 26, 25, 24, 24, 25, 26, 27,
+        31, 30, 29, 28, 28, 29, 30, 31,
+    };
+
+    return LUT[sq];
+}
+
+int sq32_to_sq64(int sq) {
+
+    static const int LUT[] = {
+         4,  5,  6,  7, 12, 13, 14, 15,
+        20, 21, 22, 23, 28, 29, 30, 31,
+        36, 37, 38, 39, 44, 45, 46, 47,
+        52, 53, 54, 55, 60, 61, 62, 63,
+    };
+
+    return LUT[sq];
+}
+
+int queen_side_sq(int sq) {
+    return (0x0F0F0F0F0F0F0F0FULL >> sq) & 1;
+}
+
+int mirror_square(int sq) {
+    return square(rank_of(sq), 7 - file_of(sq));
+}
+
 /// Operating System Definitions
 
 void* align_malloc(size_t size) {

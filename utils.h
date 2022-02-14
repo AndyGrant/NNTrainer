@@ -99,6 +99,10 @@ int rank_of(int sq);
 int square(int rank, int file);
 int relative_rank_of(int colour, int sq);
 int relative_square(int colour, int sq);
+int sq64_to_sq32(int sq);
+int sq32_to_sq64(int sq);
+int queen_side_sq(int sq);
+int mirror_square(int sq);
 
 // Operating System Function Declarations
 
