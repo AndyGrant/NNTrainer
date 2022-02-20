@@ -30,10 +30,10 @@ extern int NTHREADS;
 /// Definition of the Architecture
 
 const Layer ARCHITECTURE[] = {
-    {23370, 192, &activate_relu,    &backprop_relu    },
-    {  384,  32, &activate_relu,    &backprop_relu    },
-    {   32,  32, &activate_relu,    &backprop_relu    },
-    {   32,   1, &activate_sigmoid, &backprop_sigmoid },
+    {23370, 256, &activate_relu,    &backprop_relu    },
+    {  512,  16, &activate_relu,    &backprop_relu    },
+    {   16,  16, &activate_relu,    &backprop_relu    },
+    {   16,   1, &activate_sigmoid, &backprop_sigmoid },
 };
 
 const size_t LAYER_COUNT = sizeof(ARCHITECTURE) / sizeof(Layer);
