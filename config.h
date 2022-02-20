@@ -24,9 +24,8 @@
 #include "activate.h"
 #include "types.h"
 
-#define MAX_INPUTS 23370
-#define BATCHSIZE  16384
-#define LEARNRATE  0.001
+#define BATCHSIZE 16384
+#define LEARNRATE 0.001
 
 #define BETA_1 0.9
 #define BETA_2 0.999

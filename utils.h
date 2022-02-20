@@ -83,12 +83,14 @@ void zero_gradient(Gradient *grad);
 /// Optimizer Declarations
 
 typedef struct Optimizer {
-    Gradient *momentum;
-    Gradient *velocity;
+    Gradient *momentum, *velocity;
+    uint64_t iteration, last_seen[MAX_INPUTS];
 } Optimizer;
 
 Optimizer *create_optimizer(Network *nn);
 void delete_optimizer(Optimizer *opt);
+void save_optimizer(Optimizer *opt, const char *fname);
+void load_optimizer(Optimizer *opt, const char *fname);
 
 /// Chess Utility Declarations
 

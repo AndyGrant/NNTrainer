@@ -42,8 +42,6 @@ const size_t LAYER_COUNT = sizeof(ARCHITECTURE) / sizeof(Layer);
 
 static void compute_inputs(const Sample *sample, int index, int square, int *inputs) {
 
-    #define halfkp_encode(ksq, cr, pt, sq) (640 * (ksq) + 64 * (5 * (cr) + (pt)) + sq)
-
     int stmk  = sample->turn == WHITE ? sample->wking : sample->bking;
     int nstmk = sample->turn == WHITE ? sample->bking : sample->wking;
 
@@ -70,8 +68,6 @@ static void compute_inputs(const Sample *sample, int index, int square, int *inp
 
     inputs[4] = 20480 + 2250 + 64 * (5 * (colour == sample->turn) + piece) + srelsq;
     inputs[5] = 20480 + 2250 + 64 * (5 * (colour != sample->turn) + piece) + nsrelsq;
-
-    #undef halfkp_encode
 }
 
 static void compute_real_inputs(const Sample *sample, int index, int square, int *inputs) {
@@ -134,72 +130,6 @@ void init_architecture(Network *nn) {
     L0Gradient = create_gradient(nn);
     L0Locks = malloc(sizeof(pthread_mutex_t) * 20480);
     for (int i = 0; i < 20480; i++) pthread_mutex_init(&L0Locks[i], NULL);
-}
-
-void save_training_state(Optimizer *opt, uint64_t iteration, uint64_t *last_touched, const char *fname) {
-
-    FILE *fout = fopen(fname, "wb");
-
-    for (int layer = 0; layer < opt->momentum->layers; layer++) {
-
-        const int rows = opt->momentum->weights[layer]->rows;
-        const int cols = opt->momentum->weights[layer]->cols;
-
-        /// The Learning Rate is baked into the ADAM Momentum Matrices
-
-        const size_t bias_size   = sizeof(float) * cols;
-        const size_t weight_size = sizeof(float) * rows * cols;
-
-        float *momentum_bias    = malloc(bias_size);
-        float *momentum_weights = malloc(weight_size);
-
-        memcpy(momentum_bias, opt->momentum->biases[layer]->values, bias_size);
-        memcpy(momentum_weights, opt->momentum->weights[layer]->values, weight_size);
-
-        for (int i = 0; i < cols; i++) momentum_bias[i] /= LEARNRATE;
-        for (int i = 0; i < rows * cols; i++) momentum_weights[i] /= LEARNRATE;
-
-        /// Save the un-baked versions of the Optimizer struct
-
-        fwrite(momentum_bias, sizeof(float), cols, fout);
-        fwrite(momentum_weights, sizeof(float), rows * cols, fout);
-
-        fwrite(opt->velocity->biases[layer]->values, sizeof(float), cols, fout);
-        fwrite(opt->velocity->weights[layer]->values, sizeof(float), rows * cols, fout);
-    }
-
-    fwrite(&iteration, sizeof(uint64_t), 1, fout);
-    fwrite(last_touched, sizeof(uint64_t), 23370, fout);
-
-    fclose(fout);
-}
-
-void load_training_state(Optimizer *opt, uint64_t *iteration, uint64_t *last_touched, const char *fname) {
-
-    FILE *fin = fopen(fname, "rb");
-
-    for (int layer = 0; layer < opt->momentum->layers; layer++) {
-
-        const int rows = opt->momentum->weights[layer]->rows;
-        const int cols = opt->momentum->weights[layer]->cols;
-
-        fread(opt->momentum->biases[layer]->values,  sizeof(float), cols, fin);
-        fread(opt->momentum->weights[layer]->values, sizeof(float), rows * cols, fin);
-
-        fread(opt->velocity->biases[layer]->values,  sizeof(float), cols, fin);
-        fread(opt->velocity->weights[layer]->values, sizeof(float), rows * cols, fin);
-
-        /// Bake in the new LEARNRATE as we would normally do
-
-        for (int i = 0; i < cols; i++) opt->momentum->biases[layer]->values[i] *= LEARNRATE;
-        for (int i = 0; i < rows * cols; i++) opt->momentum->weights[layer]->values[i] *= LEARNRATE;
-    }
-
-    fwrite(iteration, sizeof(uint64_t), 1, fin);
-    fwrite(last_touched, sizeof(uint64_t), 23370, fin);
-    fclose(fin);
-
-    printf("Set Optimizer with State from %s\n\n", fname);
 }
 
 /// Implementation of the Architecture interface

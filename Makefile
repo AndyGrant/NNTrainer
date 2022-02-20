@@ -24,10 +24,10 @@ CFLAGS = -O3 -flto -ffast-math -mfma -march=native -DNDEBUG
 NETDIR := $(shell mkdir -p Networks)
 
 halfkp:
-	$(CC) $(SRC) archs/halfkp.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=HALFKP
+	$(CC) $(SRC) archs/halfkp.c    $(WFLAGS) $(CFLAGS) $(LIBS) -DMAX_INPUTS=43850 -DNN_TYPE=HALFKP
 
 psqbb:
-	$(CC) $(SRC) archs/psqbb.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=PSQBB
+	$(CC) $(SRC) archs/psqbb.c     $(WFLAGS) $(CFLAGS) $(LIBS) -DMAX_INPUTS=768   -DNN_TYPE=PSQBB
 
 mirrorhkp:
-	$(CC) $(SRC) archs/mirrorhkp.c $(WFLAGS) $(CFLAGS) $(LIBS) -DNN_TYPE=MIRRORHKP
+	$(CC) $(SRC) archs/mirrorhkp.c $(WFLAGS) $(CFLAGS) $(LIBS) -DMAX_INPUTS=23370 -DNN_TYPE=MIRRORHKP

@@ -38,8 +38,6 @@ extern const Layer ARCHITECTURE[];
 extern const size_t LAYER_COUNT;
 
 int NTHREADS;
-uint64_t current_iteration;
-uint64_t last_touched_iteration[MAX_INPUTS];
 
 int main(int argc, char **argv) {
 
@@ -66,7 +64,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < NTHREADS; i++) grads[i] = create_gradient(nn);
 
     init_architecture(nn); // Call any Architecture Specific Inits
-    if (USE_STATE) load_training_state(opt, &current_iteration, last_touched_iteration, NNSTATE);
+    if (USE_STATE) load_optimizer(opt, NNSTATE);
 
     for (int epoch = 0; epoch < 25000; epoch++) {
 
@@ -84,7 +82,7 @@ int main(int argc, char **argv) {
 
             for (int batch = 0; batch < sample_cnt / BATCHSIZE; batch++) {
 
-                current_iteration++;
+                opt->iteration++;
 
                 #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:loss)
                 for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
@@ -129,7 +127,7 @@ int main(int argc, char **argv) {
 
         // Save the Optimizer moments, and "Lazy" Adam trackers
         sprintf(fname, "%sepoch%d.state", "Networks/", epoch);
-        save_training_state(opt, current_iteration, last_touched_iteration, fname);
+        save_optimizer(opt, fname);
     }
 }
 
@@ -296,9 +294,9 @@ void update_network(Optimizer *opt, Network *nn, Gradient **grads, Batch *batch)
 
     #pragma omp parallel for schedule(static) num_threads(NTHREADS)
     for (int idx = 0; idx < batch->inputs; idx++) {
-        const int age = current_iteration - last_touched_iteration[batch->indices[idx]];
+        const int age = opt->iteration - opt->last_seen[batch->indices[idx]];
         update_input_weights(opt, nn, grads, batch, idx, age);
-        last_touched_iteration[batch->indices[idx]] = current_iteration;
+        opt->last_seen[batch->indices[idx]] = opt->iteration;
     }
 
     for (int layer = 1; layer < nn->layers; layer++) {

@@ -39,8 +39,6 @@ typedef struct Sample {
 } Sample;
 
 void init_architecture(Network *nn);
-void save_training_state(Optimizer *opt, uint64_t iteration, uint64_t *last_touched, const char *fname);
-void load_training_state(Optimizer *opt, uint64_t *iteration, uint64_t *last_touched, const char *fname);
 
 void insert_indices(bool *array, Sample *sample);
 void input_transform(const Sample *sample, const Matrix *matrix, const Vector *bias, Vector *output);

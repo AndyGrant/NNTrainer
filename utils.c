@@ -132,9 +132,9 @@ void zero_gradient(Gradient *grad) {
 /// Optimizer Functions
 
 Optimizer *create_optimizer(Network *nn) {
-    Optimizer *opt = malloc(sizeof(Optimizer));
-    opt->momentum = create_gradient(nn);
-    opt->velocity = create_gradient(nn);
+    Optimizer *opt = calloc(1, sizeof(Optimizer));
+    opt->momentum  = create_gradient(nn);
+    opt->velocity  = create_gradient(nn);
     return opt;
 }
 
@@ -142,6 +142,72 @@ void delete_optimizer(Optimizer *opt) {
     free(opt->momentum);
     free(opt->velocity);
     free(opt);
+}
+
+void save_optimizer(Optimizer *opt, const char *fname) {
+
+    FILE *fout = fopen(fname, "wb");
+
+    for (int layer = 0; layer < opt->momentum->layers; layer++) {
+
+        const int rows = opt->momentum->weights[layer]->rows;
+        const int cols = opt->momentum->weights[layer]->cols;
+
+        /// The Learning Rate is baked into the ADAM Momentum Matrices
+
+        const size_t bias_size   = sizeof(float) * cols;
+        const size_t weight_size = sizeof(float) * rows * cols;
+
+        float *momentum_bias    = malloc(bias_size);
+        float *momentum_weights = malloc(weight_size);
+
+        memcpy(momentum_bias, opt->momentum->biases[layer]->values, bias_size);
+        memcpy(momentum_weights, opt->momentum->weights[layer]->values, weight_size);
+
+        for (int i = 0; i < cols; i++) momentum_bias[i] /= LEARNRATE;
+        for (int i = 0; i < rows * cols; i++) momentum_weights[i] /= LEARNRATE;
+
+        /// Save the un-baked versions of the Optimizer struct
+
+        fwrite(momentum_bias, sizeof(float), cols, fout);
+        fwrite(momentum_weights, sizeof(float), rows * cols, fout);
+
+        fwrite(opt->velocity->biases[layer]->values, sizeof(float), cols, fout);
+        fwrite(opt->velocity->weights[layer]->values, sizeof(float), rows * cols, fout);
+    }
+
+    fwrite(&opt->iteration, sizeof(uint64_t), 1, fout);
+    fwrite( opt->last_seen, sizeof(uint64_t), MAX_INPUTS, fout);
+
+    fclose(fout);
+}
+
+void load_optimizer(Optimizer *opt, const char *fname) {
+
+    FILE *fin = fopen(fname, "rb");
+
+    for (int layer = 0; layer < opt->momentum->layers; layer++) {
+
+        const int rows = opt->momentum->weights[layer]->rows;
+        const int cols = opt->momentum->weights[layer]->cols;
+
+        fread(opt->momentum->biases[layer]->values,  sizeof(float), cols, fin);
+        fread(opt->momentum->weights[layer]->values, sizeof(float), rows * cols, fin);
+
+        fread(opt->velocity->biases[layer]->values,  sizeof(float), cols, fin);
+        fread(opt->velocity->weights[layer]->values, sizeof(float), rows * cols, fin);
+
+        /// Bake in the new LEARNRATE as we would normally do
+
+        for (int i = 0; i < cols; i++) opt->momentum->biases[layer]->values[i] *= LEARNRATE;
+        for (int i = 0; i < rows * cols; i++) opt->momentum->weights[layer]->values[i] *= LEARNRATE;
+    }
+
+    fwrite(&opt->iteration, sizeof(uint64_t), 1, fin);
+    fwrite( opt->last_seen, sizeof(uint64_t), MAX_INPUTS, fin);
+    fclose(fin);
+
+    printf("Set Optimizer with State from %s\n\n", fname);
 }
 
 /// Chess Utility Functions
