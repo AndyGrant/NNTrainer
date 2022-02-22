@@ -101,6 +101,13 @@ void update_input_weights(Optimizer *opt, Network *nn, Gradient **grads, Batch *
         avx2_update_weights(opt, nn, grads, 0, i, age);
 }
 
-void export_network(Network *nn) {
-    (void) nn;
+void export_network(Network *nn, char *fname) {
+
+    (void) nn; (void) fname;
+}
+
+void collapse_input_layer(Network *nn) {
+
+    const int rows = nn->weights_t[0]->rows, cols = nn->weights_t[0]->cols;
+    memcpy(nn->weights_t[0]->values, nn->weights[0]->values, sizeof(float) * rows * cols);
 }
