@@ -17,6 +17,7 @@
 */
 
 #include <pthread.h>
+#include <immintrin.h>
 
 #include "config.h"
 #include "operations.h"
