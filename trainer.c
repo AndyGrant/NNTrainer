@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
                 if (batch % 64 == 0) {
                     int real_batch = batch + sample / BATCHSIZE;
                     double elapsed = (get_time_point() - start) / 1000.0;
-                    printf("\r[%4d] [%8.3fs] [Batch %d / %d]",
+                    printf("\r[%4d] [%8.2fs] [Batch %d / %d]",
                         epoch, elapsed, real_batch, (int) (NSAMPLES / BATCHSIZE));
                 }
             }
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
             vloss += LOSS_FUNC(&validate[i], evals[tidx]->activated[nn->layers-1]);
         }
 
-        printf("\r[%4d] [%8.3fs] [Training = %2.10f] [Validation = %2.10f]\n",
+        printf("\r[%4d] [%8.2fs] Training [ %2.8f ] Validation [ %2.8f ]\n",
             epoch, elapsed, loss / NSAMPLES, vloss / NVALIDATE);
 
         char fname[512];
