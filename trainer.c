@@ -55,8 +55,8 @@ int main(int argc, char **argv) {
     if (USE_WEIGHTS) load_network(nn, NNWEIGHTS);
     else printf("Created Network with randomized Weights\n\n");
 
-    Sample *validate = load_samples(VALIDFILE, NULL, NVALIDATE, 0);
-    Sample *samples  = load_samples( DATAFILE, NULL, MIN(LOAD_SIZE, NSAMPLES), 0);
+    Sample *samples  = malloc(sizeof(Sample) * NSAMPLES);
+    Sample *validate = load_samples(VALIDFILE, NULL, NVALIDATE);
 
     Optimizer *opt = create_optimizer(nn);
     Evaluator *evals[NTHREADS]; Gradient *grads[NTHREADS];
@@ -71,39 +71,31 @@ int main(int argc, char **argv) {
         double loss = 0.0, vloss = 0.0;
         double start = get_time_point();
 
-        /// Train by iterating over each of the Training Samples
+        get_next_samples(DATAFILE, samples, NSAMPLES, epoch);
+        Batch *batches = create_batches(samples, NSAMPLES, BATCHSIZE);
 
-        for (uint64_t sample = 0; sample < NSAMPLES; sample += LOAD_SIZE) {
+        for (int batch = 0; batch < (int)(NSAMPLES / BATCHSIZE); batch++) {
 
-            const int sample_cnt = MIN(NSAMPLES - sample, LOAD_SIZE);
+            opt->iteration++;
 
-            load_samples(DATAFILE, samples, sample_cnt, sample);
-            Batch *batches = create_batches(samples, sample_cnt, BATCHSIZE);
-
-            for (int batch = 0; batch < sample_cnt / BATCHSIZE; batch++) {
-
-                opt->iteration++;
-
-                #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:loss)
-                for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
-                    const int tidx = omp_get_thread_num();
-                    evaluate_network(nn, evals[tidx], &samples[i]);
-                    build_backprop_grad(nn, evals[tidx], grads[tidx], &samples[i]);
-                    loss += LOSS_FUNC(&samples[i], evals[tidx]->activated[nn->layers-1]);
-                }
-
-                update_network(opt, nn, grads, &batches[batch]);
-
-                if (batch % 64 == 0) {
-                    int real_batch = batch + sample / BATCHSIZE;
-                    double elapsed = (get_time_point() - start) / 1000.0;
-                    printf("\r[%4d] [%8.2fs] [Batch %d / %d]",
-                        epoch, elapsed, real_batch, (int) (NSAMPLES / BATCHSIZE));
-                }
+            #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:loss)
+            for (int i = batch * BATCHSIZE; i < (batch+1) * BATCHSIZE; i++) {
+                const int tidx = omp_get_thread_num();
+                evaluate_network(nn, evals[tidx], &samples[i]);
+                build_backprop_grad(nn, evals[tidx], grads[tidx], &samples[i]);
+                loss += LOSS_FUNC(&samples[i], evals[tidx]->activated[nn->layers-1]);
             }
 
-            delete_batches(batches, sample_cnt, BATCHSIZE);
+            update_network(opt, nn, grads, &batches[batch]);
+
+            if (batch % 64 == 0) {
+                double elapsed = (get_time_point() - start) / 1000.0;
+                printf("\r[%4d] [%8.2fs] [Batch %d / %d]",
+                    epoch, elapsed, batch, (int) (NSAMPLES / BATCHSIZE));
+            }
         }
+
+        delete_batches(batches, NSAMPLES, BATCHSIZE);
 
         double elapsed = (get_time_point() - start) / 1000.0;
 
@@ -247,18 +239,21 @@ void load_network(Network *nn, const char *fname) {
 
 /**************************************************************************************************************/
 
-Sample *load_samples(const char *fname, Sample *samples, int length, uint64_t offset) {
+Sample *get_next_samples(const char *format, Sample *samples, int length, int epoch) {
+
+    char fname[256];
+    sprintf(fname, format, epoch % NDATAFILES);
+    return load_samples(fname, samples, length);
+}
+
+Sample *load_samples(const char *fname, Sample *samples, int length) {
+
+    printf("Loading from %s\n", fname);
 
     FILE *fin = fopen(fname, "rb");
 
     if (samples == NULL)
         samples = malloc(sizeof(Sample) * length);
-
-    #if defined(_WIN32) || defined(_WIN64)
-        _fseeki64(fin, sizeof(Sample) * offset, SEEK_SET);
-    #else
-        fseek(fin, sizeof(Sample) * offset, SEEK_SET);
-    #endif
 
     if (fread(samples, sizeof(Sample), length, fin) != (size_t) length)
         exit(EXIT_FAILURE);
