@@ -20,7 +20,8 @@
 
 #define PSQBB     0 // Normal PSQBB Networks with a single Input set
 #define HALFKP    1 // Networks with 2xHalfs via Shogi-King-Piece encoding
-#define MIRRORHKP 2 // ...
+#define MIRRORHKP 2 // HALFKP, with the King mirrored into the King Side
+#define MIRRORHKA 3 // MIRRORHKP, but include the Kings in the piece sets
 
 enum { WHITE, BLACK };
 
@@ -62,4 +63,6 @@ typedef struct Layer {
     #include "archs/halfkp.h"
 #elif NN_TYPE == MIRRORHKP
     #include "archs/mirrorhkp.h"
+#elif NN_TYPE == MIRRORHKA
+    #include "archs/mirrorhka.h"
 #endif

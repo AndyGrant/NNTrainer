@@ -43,7 +43,7 @@ void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const fl
         return;
     }
 
-    assert(matrix->rows % 8 && matrix->cols % 8);
+    assert(!(matrix->rows % 8) && !(matrix->cols % 8));
 
     __m256* out = (__m256*) output;
     __m256* dot = (__m256*) dotends;
@@ -102,7 +102,7 @@ void affine_transform(const Vector *vector, const Matrix *matrix, const Vector *
         return;
     }
 
-    assert(matrix->rows % 8 && matrix->cols % 8);
+    assert(!(matrix->rows % 8) && !(matrix->cols % 8));
 
     __m256* out = (__m256*) output->values;
     __m256* bia = (__m256*) bias->values;

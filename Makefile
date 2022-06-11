@@ -19,8 +19,8 @@ SRC	 = *.c
 LIBS = -fopenmp -lm -lpthread
 
 WFLAGS = -Wall -Wextra -Wshadow -std=gnu11
-CFLAGS = -O3 -flto -ffast-math -mfma -march=native -DNDEBUG
-
+CFLAGS = -O3 -flto -ffast-math -mfma -march=native
+# -DNDEBUG
 NETDIR := $(shell mkdir -p Networks)
 
 halfkp:
@@ -31,3 +31,6 @@ psqbb:
 
 mirrorhkp:
 	$(CC) $(SRC) archs/mirrorhkp.c $(WFLAGS) $(CFLAGS) $(LIBS) -DMAX_INPUTS=23370 -DNN_TYPE=MIRRORHKP
+
+mirrorhka:
+	$(CC) $(SRC) archs/mirrorhka.c $(WFLAGS) $(CFLAGS) $(LIBS) -DMAX_INPUTS=28044 -DNN_TYPE=MIRRORHKA
