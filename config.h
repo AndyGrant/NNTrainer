@@ -31,11 +31,11 @@
 #define BETA_2 0.999
 
 static const uint64_t NSAMPLES    = 1024 * 1024 * 128ULL;
-static const char     DATAFILE[]  = "../Data/data_halfka/cluster%d.nndata";
+static const char     DATAFILE[]  = "../Data/shuffled.nndata.%d";
 static const int      NDATAFILES  = 42;
 
 static const uint64_t NVALIDATE   = 1024 * 1024 * 32ULL;
-static const char     VALIDFILE[] = "../Data/data_halfka/validation.nndata";
+static const char     VALIDFILE[] = "../Data/s567.validation.nndata";
 
 static const bool     USE_WEIGHTS = false;
 static const char     NNWEIGHTS[] = "";
