@@ -37,6 +37,8 @@ static const int      NDATAFILES  = 42;
 static const uint64_t NVALIDATE   = 1024 * 1024 * 32ULL;
 static const char     VALIDFILE[] = "../Data/s567.validation.nndata";
 
+static const int      START_EPOCH = 0;
+
 static const bool     USE_WEIGHTS = false;
 static const char     NNWEIGHTS[] = "";
 

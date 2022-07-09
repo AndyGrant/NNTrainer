@@ -33,4 +33,4 @@ mirrorhkp:
 	$(CC) $(SRC) archs/mirrorhkp.c $(WFLAGS) $(CFLAGS) $(LIBS) -DMAX_INPUTS=21120 -DNN_TYPE=MIRRORHKP
 
 mirrorhka:
-	$(CC) $(SRC) archs/mirrorhka.c $(WFLAGS) $(CFLAGS) $(LIBS) -DMAX_INPUTS=28044 -DNN_TYPE=MIRRORHKA
+	$(CC) $(SRC) archs/mirrorhka.c $(WFLAGS) $(CFLAGS) $(LIBS) -DMAX_INPUTS=25344 -DNN_TYPE=MIRRORHKA

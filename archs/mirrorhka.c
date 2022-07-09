@@ -30,7 +30,7 @@ extern int NTHREADS;
 /// Definition of the Architecture
 
 const Layer ARCHITECTURE[] = {
-    {28044, 256, &activate_relu,    &backprop_relu    },
+    {25344, 256, &activate_relu,    &backprop_relu    },
     {  512,  16, &activate_relu,    &backprop_relu    },
     {   16,  16, &activate_relu,    &backprop_relu    },
     {   16,   1, &activate_sigmoid, &backprop_sigmoid },
@@ -57,24 +57,11 @@ static void compute_inputs(const Sample *sample, int index, int square, int *inp
     int piece  = nibble_decode(index, sample->packed) % 8;
     int colour = nibble_decode(index, sample->packed) / 8;
 
-    int saug  = 15 * (7 + rank_of( sksq) - rank_of( srelsq)) + (7 + file_of( sksq) - file_of( srelsq));
-    int nsaug = 15 * (7 + rank_of(nsksq) - rank_of(nsrelsq)) + (7 + file_of(nsksq) - file_of(nsrelsq));
-
     inputs[0] = (64 * 12 * sq64_to_sq32(sksq )) + (64 * (6 * (colour == sample->turn) + piece)) + srelsq;
     inputs[1] = (64 * 12 * sq64_to_sq32(nsksq)) + (64 * (6 * (colour != sample->turn) + piece)) + nsrelsq;
 
-    inputs[2] = (64 * 12 * 32) + (225 * (6 * (colour == sample->turn) + piece)) + saug;
-    inputs[3] = (64 * 12 * 32) + (225 * (6 * (colour != sample->turn) + piece)) + nsaug;
-
-    inputs[4] = (64 * 12 * 32) + (225 * 12) + 64 * (6 * (colour == sample->turn) + piece) + srelsq;
-    inputs[5] = (64 * 12 * 32) + (225 * 12) + 64 * (6 * (colour != sample->turn) + piece) + nsrelsq;
-
-    assert(    0 <= inputs[0] && inputs[0] < 24576);
-    assert(    0 <= inputs[1] && inputs[1] < 24576);
-    assert(24576 <= inputs[2] && inputs[2] < 27276);
-    assert(24576 <= inputs[3] && inputs[3] < 27276);
-    assert(27276 <= inputs[4] && inputs[4] < 28044);
-    assert(27276 <= inputs[5] && inputs[5] < 28044);
+    inputs[2] = (64 * 12 * 32) + 64 * (6 * (colour == sample->turn) + piece) + srelsq;
+    inputs[3] = (64 * 12 * 32) + 64 * (6 * (colour != sample->turn) + piece) + nsrelsq;
 }
 
 static void compute_real_inputs(const Sample *sample, int index, int square, int *inputs) {
@@ -98,25 +85,9 @@ static void compute_real_inputs(const Sample *sample, int index, int square, int
     inputs[1] = (64 * 12 * sq64_to_sq32(nsksq)) + (64 * (6 * (colour != sample->turn) + piece)) + nsrelsq;
 }
 
-static int nnue_to_relative_kmap(int encoded) {
-
-    /// Given a value [0, 28044], which encodes a (King Sq, Piece-Col, Piece Sq),
-    /// compute the relative index mapping of [0, 2700] which is the encoded form
-    /// of (Piece-Col, Rankwise-distance, Filewise-distance).
-
-    const int piecesq   = (encoded % 64);       // Enc = ( 1 * Piece Square )
-    const int piececol  = (encoded % 768) / 64; //     + ( 64 * Piece-Col   )
-    const int kingsq    = (encoded / 768);      //     + ( 768 * King Sq    )
-
-    const int relative  = 15 * (7 + rank_of(sq32_to_sq64(kingsq)) - rank_of(piecesq))
-                             + (7 + file_of(sq32_to_sq64(kingsq)) - file_of(piecesq));
-
-    return (225 * piececol) + relative;
-}
-
 static int nnue_to_relative_psqt(int encoded) {
 
-    /// Given a value [0, 28044], which encodes a (King Sq, Piece-Col, Piece Sq),
+    /// Given a value [0, 24576], which encodes a (King Sq, Piece-Col, Piece Sq),
     /// compute the relative index mapping of [0, 768] which is the encoded form
     /// of (Piece-Col, Piece Sq).
 
@@ -143,12 +114,12 @@ void init_architecture(Network *nn) {
 
 void insert_indices(bool *array, Sample *sample) {
 
-    int inputs[6];
+    int inputs[4];
     uint64_t bb = sample->occupied;
 
     for (int i = 0; bb != 0ull; i++) {
         compute_inputs(sample, i, poplsb(&bb), inputs);
-        for (int j = 0; j < 6; j++) array[inputs[j]] = true;
+        for (int j = 0; j < 4; j++) array[inputs[j]] = true;
     }
 }
 
@@ -192,7 +163,7 @@ void input_transform(const Sample *sample, const Matrix *matrix, const Vector *b
 void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *sample, float *dlossdz) {
 
     uint64_t bb = sample->occupied;
-    int inputs[6], seg1_head = 0, seg2_head = grad->weights[0]->cols;
+    int inputs[4], seg1_head = 0, seg2_head = grad->weights[0]->cols;
 
     __m256 *const segm1 = (__m256*) &dlossdz[seg1_head];
     __m256 *const segm2 = (__m256*) &dlossdz[seg2_head];
@@ -209,9 +180,7 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
         __m256* grad1 = (__m256*) &L0Gradient->weights[0]->values[inputs[1] * grad->weights[0]->cols];
 
         __m256* grad2 = (__m256*) &grad->weights[0]->values[inputs[2] * grad->weights[0]->cols];
-        __m256* grad4 = (__m256*) &grad->weights[0]->values[inputs[4] * grad->weights[0]->cols];
         __m256* grad3 = (__m256*) &grad->weights[0]->values[inputs[3] * grad->weights[0]->cols];
-        __m256* grad5 = (__m256*) &grad->weights[0]->values[inputs[5] * grad->weights[0]->cols];
 
         pthread_mutex_lock(&L0Locks[inputs[0]]);
         for (int j = 0; j < grad->weights[0]->cols / 8; j+=4) {
@@ -231,9 +200,7 @@ void apply_backprop_input(Network *nn, Evaluator *eval, Gradient *grad, Sample *
 
         for (int j = 0; j < grad->weights[0]->cols / 8; j++) {
             grad2[j] = _mm256_add_ps(grad2[j], segm1[j]);
-            grad4[j] = _mm256_add_ps(grad4[j], segm1[j]);
             grad3[j] = _mm256_add_ps(grad3[j], segm2[j]);
-            grad5[j] = _mm256_add_ps(grad5[j], segm2[j]);
         }
     }
 }
@@ -330,13 +297,11 @@ void collapse_input_layer(Network *nn) {
     #pragma omp parallel for schedule(static) num_threads(NTHREADS)
     for (int i = 0; i < rows; i++) {
 
-        const int offset  = cols * i;
-        const int augoff1 = cols * (rows + 0    + nnue_to_relative_kmap(i));
-        const int augoff2 = cols * (rows + 2700 + nnue_to_relative_psqt(i));
+        const int offset = cols * i;
+        const int augoff = cols * (rows + nnue_to_relative_psqt(i));
 
         for (int j = 0; j < cols; j++)
             nn->weights_t[0]->values[offset+j] = nn->weights[0]->values[offset+j]
-                                               + nn->weights[0]->values[augoff1+j]
-                                               + nn->weights[0]->values[augoff2+j];
+                                               + nn->weights[0]->values[augoff+j];
     }
 }

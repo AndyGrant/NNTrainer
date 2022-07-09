@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
     init_architecture(nn); // Call any Architecture Specific Inits
     if (USE_STATE) load_optimizer(opt, NNSTATE);
 
-    for (int epoch = 0; epoch < 25000; epoch++) {
+    for (int epoch = START_EPOCH; epoch < 25000; epoch++) {
 
         double loss = 0.0, vloss = 0.0;
         double start = get_time_point();
