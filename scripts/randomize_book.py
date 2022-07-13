@@ -66,23 +66,46 @@ class Engine():
 
 def random_position(arguments):
 
-    if arguments.fischer: pos = chess.Board.from_chess960_pos(randrange(960))
-    else: pos = chess.Board('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
+    if arguments.fischer:
+        pos = chess.Board.from_chess960_pos(randrange(960))
+
+    elif arguments.dfischer:
+
+        # As a proxy for randomization of starting position
+        p1 = chess.Board.from_chess960_pos(randrange(960)).shredder_fen()
+        p2 = chess.Board.from_chess960_pos(randrange(960)).shredder_fen()
+
+        # Grab each sides random arrangment of pieces
+        white_pieces = p1.split()[0].split('/')[7]
+        black_pieces = p2.split()[0].split('/')[0]
+
+        # Grab the file markers for the castling rights
+        white_castle = p1.split()[2][0:2]
+        black_castle = p2.split()[2][2:4]
+
+        # Merge the two FENs
+        fstring = '%s/pppppppp/8/8/8/8/PPPPPPPP/%s w %s%s - 0 1'
+        fen = fstring % (black_pieces, white_pieces, white_castle, black_castle)
+        pos = chess.Board(fen, chess960=True)
+
+    else:
+        pos = chess.Board('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')
 
     for ii in range(int(arguments.plies)):
         moves = list(pos.legal_moves)
-        if not moves: return random_position()
+        if not moves: return random_position(arguments)
         pos.push(choice(moves))
 
     if pos.legal_moves:
-        if arguments.fischer: return pos.shredder_fen()
-        else: return pos.fen()
+        if arguments.fischer or arguments.dfischer:
+            return pos.shredder_fen()
+        return pos.fen()
 
     return random_position(arguments)
 
 def thread_build_book(outqueue, arguments):
 
-    engine = Engine(arguments.engine, arguments.fischer)
+    engine = Engine(arguments.engine, arguments.fischer or arguments.dfischer)
 
     while True:
         fen = random_position(arguments)
@@ -93,20 +116,32 @@ def thread_build_book(outqueue, arguments):
 if __name__ == '__main__':
 
     p = argparse.ArgumentParser()
-    p.add_argument('--engine' , help='Binary File'   , required=True)
-    p.add_argument('--depth'  , help='Search Depth'  , required=True)
-    p.add_argument('--cutoff' , help='Search Margin' , required=True)
-    p.add_argument('--plies'  , help='Random Length' , required=True)
-    p.add_argument('--threads', help='Worker Threads', required=True)
-    p.add_argument('--fischer', help='FRC/960', action='store_true')
+    p.add_argument('--engine'  , help='Binary File'   , required=True)
+    p.add_argument('--threads' , help='Worker Threads', required=True)
+    p.add_argument('--samples' , help='Openings Count', required=True)
+    p.add_argument('--depth'   , help='Search Depth'  , default=10)
+    p.add_argument('--plies'   , help='Random Length' , default=10)
+    p.add_argument('--cutoff'  , help='Search Margin' , default=600)
+    p.add_argument('--fischer' , help='FRC/960'       , action='store_true')
+    p.add_argument('--dfischer', help='DFRC/D960'     , action='store_true')
     arguments = p.parse_args()
 
     outqueue = Queue()
 
     workers = [
-        Process(target=thread_build_book, args=(outqueue, arguments,))
-        for ii in range(int(arguments.threads))]
-    for worker in workers: worker.start()
+        Process(
+            target=thread_build_book,
+            args=(outqueue, arguments,),
+            daemon=True,
+        ) for ii in range(int(arguments.threads))
+    ]
 
-    while True:
+    for worker in workers:
+        worker.start()
+
+    for ii in range(int(arguments.samples)):
         print(outqueue.get())
+
+    for worker in workers:
+        worker.terminate()
+        worker.join()
