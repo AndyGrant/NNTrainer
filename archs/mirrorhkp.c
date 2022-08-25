@@ -30,8 +30,8 @@ extern int NTHREADS;
 /// Definition of the Architecture
 
 const Layer ARCHITECTURE[] = {
-    {21120, 256, &activate_relu,    &backprop_relu    },
-    {  512,  16, &activate_relu,    &backprop_relu    },
+    {21120, 512, &activate_relu,    &backprop_relu    },
+    { 1024,  16, &activate_relu,    &backprop_relu    },
     {   16,  16, &activate_relu,    &backprop_relu    },
     {   16,   1, &activate_sigmoid, &backprop_sigmoid },
 };
