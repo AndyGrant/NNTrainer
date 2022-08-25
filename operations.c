@@ -78,15 +78,10 @@ void set_matrix_dot_array_to_array(float *output, const Matrix *matrix, const fl
         acc6 = _mm256_hadd_ps(acc6, acc7);
         acc4 = _mm256_hadd_ps(acc4, acc6);
 
-        __m128 sumabcd1 = _mm256_extractf128_ps(acc0, 0);
-        __m128 sumabcd2 = _mm256_extractf128_ps(acc0, 1);
-        __m128 sumefgh1 = _mm256_extractf128_ps(acc4, 0);
-        __m128 sumefgh2 = _mm256_extractf128_ps(acc4, 1);
-
-        sumabcd1 = _mm_add_ps(sumabcd1, sumabcd2);
-        sumefgh1 = _mm_add_ps(sumefgh1, sumefgh2);
-
-        out[i] = _mm256_insertf128_ps(_mm256_castps128_ps256(sumabcd1), sumefgh1, 1);
+        out[i] = _mm256_add_ps(
+            _mm256_permute2f128_ps(acc0, acc4, 0x20),
+            _mm256_permute2f128_ps(acc0, acc4, 0x31)
+        );
     }
 }
 
@@ -138,15 +133,11 @@ void affine_transform(const Vector *vector, const Matrix *matrix, const Vector *
         acc6 = _mm256_hadd_ps(acc6, acc7);
         acc4 = _mm256_hadd_ps(acc4, acc6);
 
-        __m128 sumabcd1 = _mm256_extractf128_ps(acc0, 0);
-        __m128 sumabcd2 = _mm256_extractf128_ps(acc0, 1);
-        __m128 sumefgh1 = _mm256_extractf128_ps(acc4, 0);
-        __m128 sumefgh2 = _mm256_extractf128_ps(acc4, 1);
+        out[i] = _mm256_add_ps(
+            _mm256_permute2f128_ps(acc0, acc4, 0x20),
+            _mm256_permute2f128_ps(acc0, acc4, 0x31)
+        );
 
-        sumabcd1 = _mm_add_ps(sumabcd1, sumabcd2);
-        sumefgh1 = _mm_add_ps(sumefgh1, sumefgh2);
-
-        out[i] = _mm256_insertf128_ps(_mm256_castps128_ps256(sumabcd1), sumefgh1, 1);
         out[i] = _mm256_add_ps(out[i], bia[i]);
     }
 }
