@@ -31,9 +31,9 @@ extern int NTHREADS;
 
 const Layer ARCHITECTURE[] = {
     {21120, 512, &activate_relu,    &backprop_relu    },
-    { 1024,  16, &activate_relu,    &backprop_relu    },
-    {   16,  16, &activate_relu,    &backprop_relu    },
-    {   16,   1, &activate_sigmoid, &backprop_sigmoid },
+    { 1024,   8, &activate_relu,    &backprop_relu    },
+    {    8,  32, &activate_relu,    &backprop_relu    },
+    {   32,   1, &activate_sigmoid, &backprop_sigmoid },
 };
 
 const size_t LAYER_COUNT = sizeof(ARCHITECTURE) / sizeof(Layer);

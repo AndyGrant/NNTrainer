@@ -30,12 +30,12 @@
 #define BETA_1 0.9
 #define BETA_2 0.999
 
-static const uint64_t NSAMPLES    = 1024 * 1024 * 128ULL;
-static const char     DATAFILE[]  = "../Data/shuffled.nndata.%d";
-static const int      NDATAFILES  = 42;
+static const uint64_t NSAMPLES    = 1024 * 1024 * 1ULL; // 128ULL;
+static const char     DATAFILE[]  = "s44.training.nndata.%d";
+static const int      NDATAFILES  = 1;
 
-static const uint64_t NVALIDATE   = 1024 * 1024 * 32ULL;
-static const char     VALIDFILE[] = "../Data/s567.validation.nndata";
+static const uint64_t NVALIDATE   = 1024 * 1024 * 1ULL; // 32ULL;
+static const char     VALIDFILE[] = "s44.validation.nndata";
 
 static const int      START_EPOCH = 0;
 

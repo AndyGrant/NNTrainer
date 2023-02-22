@@ -26,6 +26,10 @@
 #include <string.h>
 #include <time.h>
 
+#if NN_TYPE == HALFKP
+    #include "archs/mirrorhkp.h"
+#endif
+
 #include "avx2.h"
 #include "activate.h"
 #include "batch.h"
