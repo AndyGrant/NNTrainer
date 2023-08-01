@@ -37,7 +37,7 @@
 import sys
 
 INPUT   = sys.argv[1]
-HEADERS = ['FEN', 'Result']
+HEADERS = ['FEN', 'Result', 'White', 'Black']
 
 def parseGames(fin):
 
