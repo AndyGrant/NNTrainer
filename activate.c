@@ -103,7 +103,9 @@ void backprop_null(float *dlossdz, const Vector *unactivated, const Vector *acti
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
-float l2_one_neuron_loss(const Sample *sample, const Vector *outputs) {
+float l2_one_neuron_loss(const Sample *sample, Network *nn, Evaluator *evaluator) {
+
+    const float output = evaluator->activated[nn->layers-1]->values[0];
 
     const float power = 2.0;
 
@@ -112,10 +114,19 @@ float l2_one_neuron_loss(const Sample *sample, const Vector *outputs) {
     const float eval =  sigmoid(sample->eval) * eval_weight
                      + (sample->result / 2.0) * result_weight;
 
-    return powf(fabs(eval - outputs->values[0]), power);
+    const float lass_lambda = 1 / 16384 / (1 << 22);
+
+    float summed_activated = 0;
+
+    for (int i = 0; i < 1536; i++)
+        summed_activated += evaluator->activated[0]->values[i];
+
+    return powf(fabs(eval - output), power) + summed_activated * lass_lambda;
 }
 
-void l2_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz) {
+void l2_one_neuron_lossprop(const Sample *sample, Network *nn, Evaluator *evaluator, float *dlossdz) {
+
+    const float output = evaluator->activated[nn->layers-1]->values[0];
 
     const float power = 2.0;
 
@@ -124,7 +135,16 @@ void l2_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *
     const float eval =  sigmoid(sample->eval) * eval_weight
                      + (sample->result / 2.0) * result_weight;
 
-    const float sign = (eval > outputs->values[0]) ? 1.0 : -1.0;
+    const float sign = (eval > output) ? 1.0 : -1.0;
 
-    *dlossdz = -power * powf(fabs(eval - outputs->values[0]), power - 1.0) * sign;
+    const float loss = power * powf(fabs(eval - output), power - 1.0);
+
+    const float lass_lambda = 1 / 16384 / (1 << 22);
+
+    float summed_activated = 0;
+
+    for (int i = 0; i < 1536; i++)
+        summed_activated += evaluator->activated[0]->values[i];
+
+    *dlossdz = (loss + summed_activated * lass_lambda) * -sign;
 }

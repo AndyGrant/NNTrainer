@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
                 const int tidx = omp_get_thread_num();
                 evaluate_network(nn, evals[tidx], &samples[i]);
                 build_backprop_grad(nn, evals[tidx], grads[tidx], &samples[i]);
-                loss += LOSS_FUNC(&samples[i], evals[tidx]->activated[nn->layers-1]);
+                loss += LOSS_FUNC(&samples[i], nn, evals[tidx]);
             }
 
             update_network(opt, nn, grads, &batches[batch]);
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
         for (uint64_t i = 0; i < NVALIDATE; i++) {
             const int tidx = omp_get_thread_num();
             evaluate_network(nn, evals[tidx], &validate[i]);
-            vloss += LOSS_FUNC(&validate[i], evals[tidx]->activated[nn->layers-1]);
+            vloss += LOSS_FUNC(&validate[i], nn, evals[tidx]);
         }
 
         printf("\r[%4d] [%8.2fs] Training [ %2.8f ] Validation [ %2.8f ]\n",

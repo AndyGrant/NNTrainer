@@ -52,5 +52,9 @@ void backprop_null(float *dlossdz, const Vector *unactivated, const Vector *acti
 /// >> typedef float (*Loss)     (const Sample*, const Vector *outputs);
 /// >> typedef void  (*LossProp) (const Sample*, const Vector *outputs, float *dlossdz);
 
-float l2_one_neuron_loss(const Sample *sample, const Vector *outputs);
-void l2_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz);
+// float l2_one_neuron_loss(const Sample *sample, const Vector *outputs);
+// void l2_one_neuron_lossprop(const Sample *sample, const Vector *outputs, float *dlossdz);
+
+
+float l2_one_neuron_loss(const Sample *sample, Network *nn, Evaluator *evaluator);
+void l2_one_neuron_lossprop(const Sample *sample, Network *nn, Evaluator *evaluator, float *dlossdz);

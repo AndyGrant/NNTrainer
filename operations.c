@@ -169,7 +169,7 @@ void build_backprop_grad(Network *nn, Evaluator *eval, Gradient *grad, Sample *s
     const Vector *outputs = eval->activated[nn->layers-1];
     ALIGN64 float dlossdz[outputs->length];
 
-    LOSSPROP_FUNC(sample, outputs, dlossdz);
+    LOSSPROP_FUNC(sample, nn, eval, dlossdz);
     apply_backprop(nn, eval, grad, sample, dlossdz, nn->layers-1);
 }
 
