@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
     }
 
     setvbuf(stdout, NULL, _IONBF, 0);
-    NTHREADS = omp_get_max_threads();
+    NTHREADS = omp_get_max_threads() / 2;
     printf("Using %d Threads\n", NTHREADS);
 
     Network *nn = create_network(LAYER_COUNT, ARCHITECTURE);
@@ -60,7 +60,6 @@ int main(int argc, char **argv) {
     else printf("Created Network with randomized Weights\n\n");
 
     Sample *samples  = malloc(sizeof(Sample) * NSAMPLES);
-    Sample *validate = load_samples(VALIDFILE, NULL, NVALIDATE);
 
     Optimizer *opt = create_optimizer(nn);
     Evaluator *evals[NTHREADS]; Gradient *grads[NTHREADS];
@@ -72,7 +71,7 @@ int main(int argc, char **argv) {
 
     for (int epoch = START_EPOCH; epoch < 25000; epoch++) {
 
-        double loss = 0.0, vloss = 0.0;
+        double loss = 0.0;
         double start = get_time_point();
 
         get_next_samples(DATAFILE, samples, NSAMPLES, epoch);
@@ -103,17 +102,7 @@ int main(int argc, char **argv) {
 
         double elapsed = (get_time_point() - start) / 1000.0;
 
-        /// Verify by iterating over each of the Validation Samples
-
-        #pragma omp parallel for schedule(static) num_threads(NTHREADS) reduction(+:vloss)
-        for (uint64_t i = 0; i < NVALIDATE; i++) {
-            const int tidx = omp_get_thread_num();
-            evaluate_network(nn, evals[tidx], &validate[i]);
-            vloss += LOSS_FUNC(&validate[i], evals[tidx]->activated[nn->layers-1]);
-        }
-
-        printf("\r[%4d] [%8.2fs] Training [ %2.8f ] Validation [ %2.8f ]\n",
-            epoch, elapsed, loss / NSAMPLES, vloss / NVALIDATE);
+        printf("\r[%4d] [%8.2fs] Training [ %2.8f ]\n", epoch, elapsed, loss / NSAMPLES);
 
         char fname[512];
 
