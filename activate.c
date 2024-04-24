@@ -109,17 +109,16 @@ float l2_one_neuron_loss(const Sample *sample, Network *nn, Evaluator *evaluator
 
     const float power = 2.0;
 
-    const float eval_weight = 0.50, result_weight = 0.50;
+    const float eval_weight = 0.00, result_weight = 1.00;
 
     const float eval =  sigmoid(sample->eval) * eval_weight
                      + (sample->result / 2.0) * result_weight;
 
-    const float lass_lambda = 1 / 16384 / (1 << 22);
+    const float lass_lambda = 1 / (1 << 22);
 
     float summed_activated = 0;
-
     for (int i = 0; i < 1536; i++)
-        summed_activated += evaluator->activated[0]->values[i];
+        summed_activated += evaluator->activated[0]->values[i] > 0;
 
     return powf(fabs(eval - output), power) + summed_activated * lass_lambda;
 }
@@ -130,7 +129,7 @@ void l2_one_neuron_lossprop(const Sample *sample, Network *nn, Evaluator *evalua
 
     const float power = 2.0;
 
-    const float eval_weight = 0.50, result_weight = 0.50;
+    const float eval_weight = 0.00, result_weight = 1.00;
 
     const float eval =  sigmoid(sample->eval) * eval_weight
                      + (sample->result / 2.0) * result_weight;
@@ -139,12 +138,11 @@ void l2_one_neuron_lossprop(const Sample *sample, Network *nn, Evaluator *evalua
 
     const float loss = power * powf(fabs(eval - output), power - 1.0);
 
-    const float lass_lambda = 1 / 16384 / (1 << 22);
+    const float lass_lambda = 1 / (1 << 22);
 
     float summed_activated = 0;
-
     for (int i = 0; i < 1536; i++)
-        summed_activated += evaluator->activated[0]->values[i];
+        summed_activated += evaluator->activated[0]->values[i] > 0;
 
     *dlossdz = (loss + summed_activated * lass_lambda) * -sign;
 }
