@@ -51,6 +51,13 @@ int main(int argc, char **argv) {
         exit(EXIT_SUCCESS);
     }
 
+    if (argc > 2 && !strcmp(argv[1], "import")) {
+        Network *nn = create_network(LAYER_COUNT, ARCHITECTURE);
+        import_network(nn, argv[2]);
+        save_network(nn, "imported.nn");
+        exit(EXIT_SUCCESS);
+    }
+
     setvbuf(stdout, NULL, _IONBF, 0);
     NTHREADS = omp_get_max_threads() / 2;
     printf("Using %d Threads\n", NTHREADS);

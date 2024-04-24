@@ -18,7 +18,7 @@ CC	 = gcc
 SRC	 = *.c
 LIBS = -fopenmp -lm -lpthread
 
-WFLAGS = -Wall -Wextra -Wshadow -std=gnu11
+WFLAGS = -Wall -Wextra -Wshadow -std=gnu11 -Wno-unused-result
 CFLAGS = -O3 -flto -ffast-math -mfma -march=native -DNDEBUG
 
 NETDIR := $(shell mkdir -p Networks)
