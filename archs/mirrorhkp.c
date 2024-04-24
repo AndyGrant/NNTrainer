@@ -218,6 +218,68 @@ void update_input_weights(Optimizer *opt, Network *nn, Gradient **grads, Batch *
             avx2_update_8x8(opt, nn, &L0Gradient, 0, i, age);
 }
 
+void import_network(Network *nn, char *fname) {
+
+    FILE *fin = fopen(fname, "rb");
+
+    {
+        const int layer = 0;
+        const int rows  = 20480; // nn->weights[layer]->rows;
+        const int cols  = nn->weights[layer]->cols;
+
+        int16_t *biases  = malloc(sizeof(int16_t) * cols);
+        int16_t *weights = malloc(sizeof(int16_t) * rows * cols);
+
+        fread(biases, sizeof(int16_t), cols, fin);
+        fread(weights, sizeof(int16_t), rows * cols, fin);
+
+        zero_matrix(nn->weights[layer]);
+
+        for (int i = 0; i < cols; i++)
+            nn->biases[layer]->values[i] = (float)(biases[i]) / 64;
+
+        for (int i = 0; i < rows * cols; i++)
+            nn->weights[layer]->values[i] = (float)(weights[i]) / 64;
+
+        free(biases); free(weights);
+    }
+
+    {
+        const int layer = 1;
+        const int rows  = nn->weights[layer]->rows;
+        const int cols  = nn->weights[layer]->cols;
+
+        int32_t *biases  = malloc(sizeof(int32_t) * cols);
+        int8_t  *weights = malloc(sizeof(int8_t ) * rows * cols);
+
+        fread(biases, sizeof(int32_t), cols, fin);
+        fread(weights, sizeof(int8_t), rows * cols, fin);
+
+        for (int i = 0; i < cols; i++)
+            nn->biases[layer]->values[i] = (float)(biases[i]) / 32;
+
+        for (int i = 0; i < rows * cols; i++)
+            nn->weights[layer]->values[i] = (float)(weights[i]) / 32;
+
+        free(biases); free(weights);
+    }
+
+    for (int layer = 2; layer < nn->layers; layer++) {
+
+        const int rows = nn->weights[layer]->rows;
+        const int cols = nn->weights[layer]->cols;
+
+        fread(nn->biases[layer]->values, sizeof(float), cols, fin);
+        fread(nn->weights[layer]->values, sizeof(float), rows * cols, fin);
+    }
+
+    fclose(fin);
+
+    printf("Finished!\n");
+    fflush(stdout);
+
+}
+
 void export_network(Network *nn, char *fname) {
 
     FILE *fout = fopen("exported.nn", "wb");
